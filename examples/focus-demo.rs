@@ -9,9 +9,12 @@
 //! LLM_API_KEY=your-key cargo run --example focus-demo
 //! ```
 
+mod common;
+
 use std::sync::Arc;
 use std::time::Duration;
 
+use common::client as build_client;
 use phi_agent::{Focus, FocusContext, FocusError, OpenAiClient};
 use serde::Deserialize;
 
@@ -80,15 +83,7 @@ async fn judge_task(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv().ok();
-
-    let api_key = std::env::var("LLM_API_KEY")
-        .or_else(|_| std::env::var("OPENAI_API_KEY"))
-        .expect("Set LLM_API_KEY or OPENAI_API_KEY environment variable");
-    let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| "opus".into());
-    let base_url = std::env::var("LLM_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".into());
-
-    let client = Arc::new(OpenAiClient::new(api_key, model, Some(base_url)));
+    let client = build_client();
 
     println!("═══ Focus Demo ═══\n");
 

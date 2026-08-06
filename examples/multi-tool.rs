@@ -8,13 +8,14 @@
 //! LLM_API_KEY=your-key cargo run --example multi-tool
 //! ```
 
-use std::sync::Arc;
+mod common;
 
 use agent_base::{AgentResult, Tool, ToolContext, ToolControlFlow, ToolOutput};
 use async_trait::async_trait;
+use common::client;
 use phi_agent::{
-    OpenAiClient, OutputFormat, PhiAgent, PhiAgentConfig, ReasoningEffort, SafetyConfig, base_agent_builder,
-    build_system_prompt, create_stdout_renderer,
+    OutputFormat, PhiAgent, PhiAgentConfig, ReasoningEffort, SafetyConfig, base_agent_builder, build_system_prompt,
+    create_stdout_renderer,
 };
 use serde_json::{Value, json};
 
@@ -92,15 +93,8 @@ impl Tool for EnvVarTool {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv().ok();
-
-    let api_key = std::env::var("LLM_API_KEY")
-        .or_else(|_| std::env::var("OPENAI_API_KEY"))
-        .expect("Set LLM_API_KEY or OPENAI_API_KEY environment variable");
-    let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| "opus".into());
-    let base_url = std::env::var("LLM_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".into());
-
-    let llm_client = Arc::new(OpenAiClient::new(api_key, model.clone(), Some(base_url)));
+    let model = common::resolve_llm_env().model;
+    let llm_client = client();
 
     // Register multiple tools — the agent picks the right one for each request
     let builder = base_agent_builder(llm_client)
