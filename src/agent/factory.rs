@@ -29,6 +29,19 @@ pub struct PhiAgentConfig {
     pub max_turns: Option<u32>,
 }
 
+impl Default for PhiAgentConfig {
+    fn default() -> Self {
+        Self {
+            model: String::new(),
+            enable_thinking: false,
+            thinking_budget: None,
+            thinking_effort: ReasoningEffort::default(),
+            safety: SafetyConfig::default(),
+            max_turns: None,
+        }
+    }
+}
+
 /// A built Agent instance.
 ///
 /// Wraps [`AgentRuntime`] with common operations behind a simpler API.
