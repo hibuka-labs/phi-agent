@@ -40,6 +40,8 @@ pub async fn run() -> anyhow::Result<()> {
         .middleware(TurnFactMiddleware::new())
         .middleware(TurnToolLimitMiddleware::from_config(&SafetyConfig::default()));
     let server = ProtocolServer::from_builder(builder)?;
+    let tool_count = server.list_tools().await.len();
+    eprintln!("Bridge server ready. {tool_count} tools registered. Listening on stdin...");
 
     let stdin = BufReader::new(tokio::io::stdin());
     let mut lines = stdin.lines();
