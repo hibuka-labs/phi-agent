@@ -128,4 +128,21 @@ mod tests {
         let out = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
         assert!(out.is_empty());
     }
+
+    #[test]
+    fn test_null_renderer_consumes_events_silently() {
+        let mut r = NullRenderer;
+        let sid = session_id();
+
+        // Representative framework events should all succeed and produce no output.
+        assert!(r.render(RuntimeEvent::TextDelta { session_id: sid.clone(), text: "hello".into() }).is_ok());
+        assert!(r.render(RuntimeEvent::ThoughtDelta { session_id: sid.clone(), text: "thinking".into() }).is_ok());
+        assert!(r.render(RuntimeEvent::ToolCallStarted { session_id: sid.clone(), tool_name: "test_tool".into(), args_json: "{}".into() }).is_ok());
+        assert!(r.render(RuntimeEvent::ToolCallFinished { session_id: sid.clone(), tool_name: "test_tool".into(), summary: "done".into() }).is_ok());
+        assert!(r.render(RuntimeEvent::UserEvent { session_id: sid.clone(), event: agent_base::UserEvent::Progress { text: "progress".into() } }).is_ok());
+        assert!(r.render(RuntimeEvent::PlanUpdated { session_id: sid.clone(), objective: "obj".into(), explanation: None, plan: vec![] }).is_ok());
+        assert!(r.render(RuntimeEvent::RunFinished { session_id: sid.clone() }).is_ok());
+        assert!(r.finish_turn().is_ok());
+        assert!(r.finish_session().is_ok());
+    }
 }
