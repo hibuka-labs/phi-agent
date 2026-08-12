@@ -4,7 +4,7 @@ phi-agent provides kernel primitives via feature flags. `file` is on by default;
 
 | Category | Feature | Tools | Default |
 |----------|---------|-------|---------|
-| File | `file` | `read_file`, `write_file`, `list_files` | **On** |
+| File | `file` | `read_file`, `write_file`, `edit_file`, `list_files` | **On** |
 | Shell | `shell` | `execute_command` | Off |
 | Multi-Agent | `multi-agent` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`, `close_agent` | Off |
 
@@ -22,7 +22,7 @@ cargo add phi-agent --features shell,multi-agent
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.9", features = ["shell", "multi-agent"] }
+phi-agent = { version = "0.10", features = ["shell", "multi-agent"] }
 ```
 
 ### Command line
@@ -39,25 +39,35 @@ let builder = base_agent_builder(llm_client)
 // Kernel tools registered based on enabled features
 ```
 
+### full feature
+
+`full` enables `file` + `shell` + `mcp` + `telemetry` + `logging` in one shot (excludes `multi-agent` and `browser`):
+
+```bash
+cargo run --features full
+```
+
 ---
 
 ## File Tools (`file`)
 
-Provides `read_file`, `write_file`, `list_files` — the architectural foundation for Skills and Memory.
+Provides `read_file`, `write_file`, `edit_file`, `list_files` — the architectural foundation for Skills and Memory.
 
 ### Design principles
 
-**Path safety**. All paths are resolved relative to the working directory. Parent directory traversal (`..`) is rejected.
+**Path safety**. All paths are resolved relative to the working directory. Parent directory traversal (`..`) and absolute paths are rejected.
 
 **Size limits**. `read_file` defaults to 2000 lines per call (use `offset`/`limit` for large files). `write_file` defaults to 1MB max per write.
 
-**Explicit truncation**. When `write_file` truncates output, the result carries a `... (truncated)` marker so the agent knows the content is incomplete.
+**Precision editing**. `edit_file` replaces exact `old_text`/`new_text` fragments (rather than rewriting the whole file) and requires each `old_text` to be unique in the file.
+
+**Output truncation**. Tool output is truncated to 4000 characters by default (tune via `PHI_MAX_TOOL_OUTPUT_CHARS`); truncated results carry a `...(truncated)` marker.
 
 ### Why file tools matter
 
 ```mermaid
 graph TD
-    FT["📁 read_file / write_file / list_files<br/><i>File Tools (kernel layer)</i>"]
+    FT["📁 read_file / write_file / edit_file / list_files<br/><i>File Tools (kernel layer)</i>"]
 
     FT --> SKILLS["Skills<br/>Reads SKILL.md for domain knowledge"]
     FT --> MEMORY["Memory<br/>Reads/writes .phi/memory/ for persistent context"]
@@ -83,7 +93,7 @@ cargo install phi-agent --features shell
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.9", features = ["multi-agent"] }
+phi-agent = { version = "0.10", features = ["multi-agent"] }
 ```
 
 ---

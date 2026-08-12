@@ -4,7 +4,7 @@ phi-agent 通过 feature flag 提供内核原语。`file` 默认开启，`shell`
 
 | 类别 | Feature | 工具 | 默认 |
 |------|---------|------|------|
-| 文件 | `file` | `read_file`、`write_file`、`list_files` | **开启** |
+| 文件 | `file` | `read_file`、`write_file`、`edit_file`、`list_files` | **开启** |
 | Shell | `shell` | `execute_command` | 关闭 |
 | 多 Agent | `multi-agent` | `spawn_agent`、`send_message`、`followup_task`、`wait_agent`、`list_agents`、`close_agent` | 关闭 |
 
@@ -22,7 +22,7 @@ cargo add phi-agent --features shell,multi-agent
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.9", features = ["shell", "multi-agent"] }
+phi-agent = { version = "0.10", features = ["shell", "multi-agent"] }
 ```
 
 ### 命令行编译
@@ -39,25 +39,35 @@ let builder = base_agent_builder(llm_client)
 // 根据启用的 feature，自动注册内核工具
 ```
 
+### full 特性
+
+`full` 一次性启用 `file` + `shell` + `mcp` + `telemetry` + `logging`（不含 `multi-agent` 和 `browser`）：
+
+```bash
+cargo run --features full
+```
+
 ---
 
 ## 文件工具 (`file`)
 
-提供 `read_file`、`write_file`、`list_files` 三个工具，是 Skills 和 Memory 的架构基座。
+提供 `read_file`、`write_file`、`edit_file`、`list_files` 四个工具，是 Skills 和 Memory 的架构基座。
 
 ### 设计原则
 
-**路径安全**。所有路径相对工作目录解析，拒绝父目录穿越（`..`）。
+**路径安全**。所有路径相对工作目录解析，拒绝父目录穿越（`..`）和绝对路径。
 
 **大小限制**。`read_file` 默认每次最多 2000 行（大文件用 `offset`/`limit` 分页）。`write_file` 默认单次最多 1MB。
 
-**显式截断**。当 `write_file` 输出被截断时，结果会携带 `... (truncated)` 标记，Agent 可据此判断内容不完整。
+**精确替换**。`edit_file` 用 `old_text`/`new_text` 精确替换文件片段（而非重写整个文件），并要求每个 `old_text` 在文件中唯一。
+
+**输出截断**。工具输出默认截断到 4000 字符（可用 `PHI_MAX_TOOL_OUTPUT_CHARS` 调整），被截断的结果携带 `...(truncated)` 标记。
 
 ### 为什么文件工具很重要
 
 ```mermaid
 graph TD
-    FT["📁 read_file / write_file / list_files<br/><i>文件工具（内核层）</i>"]
+    FT["📁 read_file / write_file / edit_file / list_files<br/><i>文件工具（内核层）</i>"]
 
     FT --> SKILLS["Skills<br/>读取 SKILL.md 获取领域知识"]
     FT --> MEMORY["Memory<br/>读写 .phi/memory/ 持久化上下文"]
@@ -83,7 +93,7 @@ cargo install phi-agent --features shell
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.9", features = ["multi-agent"] }
+phi-agent = { version = "0.10", features = ["multi-agent"] }
 ```
 
 ---

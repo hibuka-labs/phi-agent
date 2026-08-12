@@ -20,7 +20,7 @@ use crate::agent::compression::SummarizingMiddleware;
 /// - Session limits (50 sessions / 100 turns per session / 50k per-message cap)
 /// - Per-run react-loop cap (200 iterations for one user input)
 /// - LLM-based context compression for long tool-heavy conversations
-/// - File tools (read_file / write_file / list_files) — enabled by default
+/// - File tools (read_file / write_file / edit_file / list_files) — enabled by default
 /// - Skills injected into system prompt (not as tools — LLM uses read_file;
 ///   enabled by default via `file` feature)
 /// - MCP protocol support — enabled by default
@@ -78,10 +78,11 @@ pub fn base_agent_builder(llm_client: Arc<dyn agent_base::StreamClient>) -> agen
     // ── File tools (opt-in via `file` feature) ──
     #[cfg(feature = "file")]
     {
-        use phi_kernel_tools::file::{ListFilesTool, ReadFileTool, WriteFileTool};
+        use phi_kernel_tools::file::{EditFileTool, ListFilesTool, ReadFileTool, WriteFileTool};
         builder = builder
             .register_tool_arc(Arc::new(ReadFileTool::new(cwd.clone())))
             .register_tool_arc(Arc::new(WriteFileTool::new(cwd.clone())))
+            .register_tool_arc(Arc::new(EditFileTool::new(cwd.clone())))
             .register_tool_arc(Arc::new(ListFilesTool::new(cwd.clone())));
     }
 

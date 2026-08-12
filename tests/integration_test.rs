@@ -325,6 +325,7 @@ async fn test_base_agent_builder_registers_file_tools() {
     let names: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
     assert!(names.contains(&"read_file"), "read_file tool should be registered");
     assert!(names.contains(&"write_file"), "write_file tool should be registered");
+    assert!(names.contains(&"edit_file"), "edit_file tool should be registered");
     assert!(names.contains(&"list_files"), "list_files tool should be registered");
 }
 
