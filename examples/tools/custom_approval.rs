@@ -126,24 +126,15 @@ impl ApprovalHandler for RiskBasedApprovalHandler {
     ) -> AgentResult<ApprovalDecision> {
         let decision = match request.risk_level {
             RiskLevel::Safe => {
-                eprintln!(
-                    "  [APPROVE] '{}' is safe — AllowAlways",
-                    request.title
-                );
+                eprintln!("  [APPROVE] '{}' is safe — AllowAlways", request.title);
                 ApprovalDecision::AllowAlways
             },
             RiskLevel::Sensitive => {
-                eprintln!(
-                    "  [APPROVE] '{}' is sensitive — AllowOnce (will re-prompt next time)",
-                    request.title
-                );
+                eprintln!("  [APPROVE] '{}' is sensitive — AllowOnce (will re-prompt next time)", request.title);
                 ApprovalDecision::AllowOnce
             },
             RiskLevel::Destructive => {
-                eprintln!(
-                    "  [DENY]   '{}' is destructive — Deny\n    reason: {}",
-                    request.title, request.message
-                );
+                eprintln!("  [DENY]   '{}' is destructive — Deny\n    reason: {}", request.title, request.message);
                 ApprovalDecision::Deny
             },
         };

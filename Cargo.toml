@@ -15,12 +15,12 @@ path = "src/bin/phi/main.rs"
 required-features = ["mcp", "telemetry", "logging"]
 
 [dependencies]
-agent-base = { version = "0.1.14" }
-agent-works = { version = "0.1.7" }
-phi-kernel-tools = { version = "0.1.1", default-features = false }
-phi-tools = { version = "0.1.5", optional = true }
-phi-telemetry = { version = "0.1.5", optional = true }
-log-core = { version = "0.1.3", optional = true }
+agent-base = { version = "0.1.14", path = "../agent-base" }
+agent-works = { version = "0.1.7", path = "../agent-works" }
+phi-kernel-tools = { version = "0.1.1", default-features = false, path = "../phi-kernel-tools" }
+phi-tools = { version = "0.1.5", optional = true, path = "../phi-tools" }
+phi-telemetry = { version = "0.1.5", optional = true, path = "../phi-telemetry" }
+log-core = { version = "0.1.3", optional = true, path = "../log-core" }
 anyhow = "1"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
@@ -179,3 +179,9 @@ required-features = ["shell"]
 [[test]]
 name = "bridge_messages"
 path = "tests/stress/bridge_messages.rs"
+
+# LOCAL DEV ONLY — DO NOT COMMIT
+[patch.crates-io]
+agent-base = { path = "../agent-base" }
+agent-works = { path = "../agent-works" }
+phi-kernel-tools = { path = "../phi-kernel-tools" }
