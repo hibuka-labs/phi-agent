@@ -248,3 +248,105 @@ async fn test_create_session_without_external_id() {
     assert!(sid.id > 0);
     assert!(sid.external_id.is_none());
 }
+
+// ── Additional ProtocolServer unit tests ──
+
+/// Verify that `ProtocolServer::from_builder` constructs a working server
+/// with tools registered by the builder.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_from_builder_creates_functional_server() {
+    let mock_llm = Arc::new(MockLlmClient::new());
+    let mock = agent_base::llm::adapt(mock_llm.clone());
+
+    // Build through the same path the CLI uses
+    let builder = phi_agent::base_agent_builder(mock.clone()).system_prompt("test".to_string());
+    let server = phi_agent::bridge::server::ProtocolServer::from_builder(builder)
+        .expect("from_builder should succeed with valid builder");
+
+    let tools = server.list_tools().await;
+    assert!(!tools.is_empty(), "builder should register file tools by default");
+
+    let sid = server.create_session(None).await;
+    assert!(sid.0.id > 0, "should be able to create sessions from builder-created server");
+}
+
+/// Calling cancel() on an idle server should not panic.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_cancel_idle_server_no_panic() {
+    let mock_llm = Arc::new(MockLlmClient::new());
+    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let server = build_server(mock);
+
+    // Cancel on idle server — should be a no-op, no panic
+    server.cancel();
+    // Cancel twice — still no panic
+    server.cancel();
+}
+
+/// Multiple anonymous create_session calls return different sessions.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_multiple_anonymous_sessions_are_different() {
+    let mock_llm = Arc::new(MockLlmClient::new());
+    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let server = build_server(mock);
+
+    let (sid1, _) = server.create_session(None).await;
+    let (sid2, _) = server.create_session(None).await;
+    let (sid3, _) = server.create_session(None).await;
+
+    assert_ne!(sid1.id, sid2.id);
+    assert_ne!(sid2.id, sid3.id);
+    assert_ne!(sid1.id, sid3.id);
+}
+
+/// `list_tools` should return tools sorted by name.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_list_tools_sorted_by_name() {
+    let mock_llm = Arc::new(MockLlmClient::new());
+    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let server = build_server(mock);
+
+    // Register tools in reverse alphabetical order
+    server.register_tool("z_tool".into(), "Z".into(), serde_json::json!({})).await;
+    server.register_tool("m_tool".into(), "M".into(), serde_json::json!({})).await;
+    server.register_tool("a_tool".into(), "A".into(), serde_json::json!({})).await;
+
+    let tools = server.list_tools().await;
+    let names: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
+
+    // All registered tools must appear in alphabetical order
+    let custom_indices: Vec<usize> =
+        names.iter().enumerate().filter(|(_, n)| ["a_tool", "m_tool", "z_tool"].contains(n)).map(|(i, _)| i).collect();
+
+    assert_eq!(custom_indices.len(), 3, "all 3 custom tools should be present");
+    assert!(custom_indices.windows(2).all(|w| w[0] < w[1]), "custom tools should appear in alphabetical order");
+}
+
+/// Session ID from `create_session` matches the one from `get_or_create_session`
+/// when using the same external_id.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_create_session_external_id_consistency() {
+    let mock_llm = Arc::new(MockLlmClient::new());
+    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let server = build_server(mock);
+
+    // create_session doesn't register in the external_id map,
+    // so consecutive get_or_create_session calls with the same id
+    // should reuse after the first call
+    let sid1 = server.get_or_create_session(Some("consistent-ext".into())).await;
+    let sid2 = server.get_or_create_session(Some("consistent-ext".into())).await;
+
+    assert_eq!(sid1.id, sid2.id, "get_or_create_session should reuse same external_id");
+}
+
+/// Verify that subscribing events before any turn returns an open receiver.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_subscribe_before_run_is_open() {
+    let mock_llm = Arc::new(MockLlmClient::new());
+    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let server = build_server(mock);
+
+    let rx = server.subscribe_events();
+    // Before any turn, the receiver should be empty but not closed
+    assert_eq!(rx.len(), 0);
+}

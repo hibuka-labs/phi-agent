@@ -96,6 +96,10 @@ name = "custom_policy"
 path = "examples/tools/custom_policy.rs"
 
 [[example]]
+name = "custom_approval"
+path = "examples/tools/custom_approval.rs"
+
+[[example]]
 name = "multi_tool"
 path = "examples/tools/multi_tool.rs"
 
