@@ -11,6 +11,8 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 [[package]]
 name = "agent-base"
 version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d892e9c1fec201a9906d4d1f7ae45f227a9d009b1d78e88fbca684a7f5712761"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -31,6 +33,8 @@ dependencies = [
 [[package]]
 name = "agent-works"
 version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bca58a131837f140bb6e2c40322d698b2c26660f8c454e9bac33b345d03598d0"
 dependencies = [
  "agent-base",
  "async-trait",
@@ -1689,6 +1693,8 @@ dependencies = [
 [[package]]
 name = "phi-kernel-tools"
 version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b194c3566580c8341452d7744fb8537dbb569866a7a97804160ac244f62b33a3"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -1703,6 +1709,8 @@ dependencies = [
 [[package]]
 name = "phi-telemetry"
 version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cbc9738e7a440d1c08c57b06c50d48299f9e76171da161185826b2e73e413c2d"
 dependencies = [
  "agent-base",
  "anyhow",
@@ -1716,6 +1724,8 @@ dependencies = [
 [[package]]
 name = "phi-tools"
 version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ceda5dd9d5f356ff96d1b8e6db5714bc9b2e9a7c1da3c6e074af01c12ff0619"
 dependencies = [
  "agent-base",
  "anyhow",
