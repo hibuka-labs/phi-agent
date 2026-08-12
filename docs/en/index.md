@@ -13,7 +13,7 @@ hide:
 
 **Don't just let AI chat — let it finish the job**
 
-Generic agents are everywhere, but the real work — your work — needs an agent that knows your business. phi-agent is the lightweight runtime foundation for building it — give an LLM tools, memory, and an execution loop, and it finishes the job on its own, you bring the tools, prompts, and domain knowledge.
+Generic agents are everywhere, but the real work — your work — needs an agent that knows your business. phi-agent is the lightweight runtime foundation for building it — you just write tools and domain prompts, and it finishes the job on its own.
 
 <a href="guide/getting-started/" class="md-button md-button--primary" style="margin-right: 0.5rem">
   :octicons-arrow-right-24: &nbsp; Get Started
@@ -28,17 +28,17 @@ Generic agents are everywhere, but the real work — your work — needs an agen
 
 <div class="grid cards col-1" markdown>
 
+-   :material-rocket-launch-outline:{ .lg .middle } **Minimal kernel, safe and fast**
+
+    ---
+
+    A tool is three methods: `name()`, `definition()`, `call()`. Compiles to a single binary — instant startup, no wasted memory. From cloud servers to edge devices, wherever Rust compiles, it runs.
+
 -   :material-target:{ .lg .middle } **Your domain, your rules**
 
     ---
 
     Generic agents know a little about everything — except your business. And you can't change them. No black box. No compromise. No “wait for the next release.” Your experience becomes the prompt, your business becomes the tools — your agent grows out of your domain.
-
--   :material-rocket-launch-outline:{ .lg .middle } **One file. Minimal. Fast.**
-
-    ---
-
-    A tool is three methods: `name()`, `definition()`, `call()`. Compiles to a single binary — instant startup, zero wasted memory. From cloud servers to edge devices, wherever Rust runs, it runs.
 
 -   :material-chart-line:{ .lg .middle } **Every step, on the record**
 
