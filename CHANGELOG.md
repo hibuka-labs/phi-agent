@@ -5,6 +5,15 @@ All notable changes to phi-agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-08-13
+
+### Added
+- **`edit_file` kernel tool wired into `base_agent_builder()`** — phi-kernel-tools already shipped `edit_file` (precision text replacement with uniqueness checks, overlap detection, atomic writes, and CRLF/LF preservation), but it wasn't registered. It's now available by default with the `file` feature, alongside `read_file`/`write_file`/`list_files`.
+
+### Changed
+- Sync EN/ZH file-tools docs: document `edit_file`, fix the truncation description, and add the `full` feature.
+- Bump version to 0.10.1
+
 ## [0.9.1] - 2026-08-11
 
 ### Added

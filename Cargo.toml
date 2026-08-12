@@ -1,6 +1,6 @@
 [package]
 name = "phi-agent"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2024"
 description = "phi-agent — Rust AI Agent runtime framework: orchestration, sessions, streaming built-in. You define tools, prompts, domain knowledge."
 license = "MIT"

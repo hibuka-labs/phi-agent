@@ -1661,7 +1661,7 @@ dependencies = [
 
 [[package]]
 name = "phi-agent"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "agent-base",
  "agent-works",
