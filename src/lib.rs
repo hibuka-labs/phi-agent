@@ -1,4 +1,5 @@
-//! phi-agent: General-purpose AI Agent framework
+//! phi-agent: Rust AI Agent runtime framework — orchestration, sessions, streaming all built-in.
+//! You only define tools, prompts, and domain knowledge.
 //!
 //! Built on agent-base and agent-works, providing builder factory, renderer,
 //! config resolution, session management, and other infrastructure.

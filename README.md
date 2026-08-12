@@ -8,7 +8,7 @@
 [![Documentation](https://img.shields.io/badge/docs-book-green.svg)](https://docs.phiagent.dev)
 [![PyPI](https://img.shields.io/pypi/v/phi-agent.svg)](https://pypi.org/project/phi-agent/)
 
-Rust AI Agent framework. Agent orchestration, session management, streaming output — the framework handles it. You write three things: your tools, your prompts, your domain knowledge.
+Rust AI Agent runtime framework — orchestration, sessions, streaming all built-in. You only define tools, prompts, and domain knowledge.
 
 > **phi-agent ships with zero application tools.** No web search, no database connector, no code executor — just a clean Rust runtime. What tools your agent needs is entirely up to you. Kernel primitives (file I/O, shell, sub-agents) are available via `phi-kernel-tools` as opt-in infrastructure behind feature flags. File tools and MCP are on by default; shell and multi-agent are opt-in.
 

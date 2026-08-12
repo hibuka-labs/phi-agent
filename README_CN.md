@@ -8,7 +8,7 @@
 [![Documentation](https://img.shields.io/badge/docs-book-green.svg)](https://docs.phiagent.dev)
 [![PyPI](https://img.shields.io/pypi/v/phi-agent.svg)](https://pypi.org/project/phi-agent/)
 
-Rust AI Agent 框架。Agent 的调度、会话、流式输出——框架搞定。你只写三样东西：你的工具、你的提示词、你的领域知识。
+Rust AI Agent 运行时框架——调度、会话、流式全内置，你只需定义工具、提示词和领域知识。
 
 > **phi-agent 不内置任何业务工具。** 没有搜索引擎、没有数据库连接、没有代码执行器——干干净净的 Rust 运行时。Agent 需要什么工具，完全由你决定。内核原语（文件读写、Shell、子 Agent）通过 `phi-kernel-tools` 按需开启，feature gate 控制。文件工具和 MCP 默认开启，shell 和 multi-agent 按需启用。
 

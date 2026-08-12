@@ -2,7 +2,7 @@
 name = "phi-agent"
 version = "0.10.0"
 edition = "2024"
-description = "phi-agent — General-purpose AI Agent framework (builder factory, renderer, config, session management)"
+description = "phi-agent — Rust AI Agent runtime framework: orchestration, sessions, streaming built-in. You define tools, prompts, domain knowledge."
 license = "MIT"
 repository = "https://github.com/hibuka-labs/phi-agent"
 readme = "README.md"
