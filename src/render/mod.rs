@@ -52,6 +52,13 @@ pub enum OutputFormat {
     Quiet,
 }
 
+impl Default for OutputFormat {
+    /// Sensible terminal defaults: tool args shown, thinking hidden, colors on.
+    fn default() -> Self {
+        OutputFormat::Terminal { show_thinking: false, show_tool_args: true, color: true }
+    }
+}
+
 /// Create the corresponding renderer for a given output format.
 ///
 /// `writer` defaults to stdout (CLI scenario). Web consumers can pass a

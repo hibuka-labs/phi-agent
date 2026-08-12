@@ -1,5 +1,5 @@
 site_name: phi-agent
-site_description: General-purpose Rust AI Agent Framework — simple, pure, predictable. Ship your AI apps faster.
+site_description: Rust runtime foundation for vertical-domain AI agents — orchestration, sessions, and streaming built in. You bring the tools, prompts, and domain knowledge.
 site_url: https://docs.phiagent.dev/
 repo_url: https://github.com/hibuka-labs/phi-agent
 repo_name: hibuka-labs/phi-agent

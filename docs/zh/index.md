@@ -9,7 +9,11 @@ hide:
   phi-agent
 </h1>
 
-Rust AI Agent 框架。Agent 的调度、会话、流式输出——框架搞定。你只写三样东西：你的工具、你的提示词、你的领域知识。
+<div class="phi-hero" markdown>
+
+**让 AI 不只是聊天，而是把事做完**
+
+通用 Agent 遍地都是，但你业务里的事，只有懂你业务的 Agent 才做得完。phi-agent 就是构建这种 Agent 的轻巧运行时底座——给 LLM 装上工具、记忆和执行循环，它就能自主把事做完，你只写工具、提示词和领域知识。
 
 <a href="guide/getting-started/" class="md-button md-button--primary" style="margin-right: 0.5rem">
   :octicons-arrow-right-24: &nbsp; 快速开始
@@ -18,29 +22,63 @@ Rust AI Agent 框架。Agent 的调度、会话、流式输出——框架搞定
   :octicons-mark-github-16: &nbsp; GitHub
 </a>
 
+</div>
+
 ---
 
-<div class="grid cards col-3" markdown>
+<div class="grid cards col-1" markdown>
 
 -   :material-target:{ .lg .middle } **你的领域，你做主**
 
     ---
 
-    Agent 调度循环、会话管理、流式事件、工具路由、审批拦截——框架全做了。你不用写胶水代码，不用重做状态管理。专注你的领域逻辑。
+    通用 Agent 什么都懂一点，唯独不懂你的业务——而且你改不动，没有黑盒，没有将就，没有”等下个版本”。你的经验写进提示词，你的业务做成工具，你的 Agent，从你的领域里长出来。
 
--   :material-rocket-launch-outline:{ .lg .middle } **单一二进制，零依赖**
-
-    ---
-
-    不需要 Node.js。不需要 Python。编译出来就一个文件，丢过去就跑。`cargo install`，十秒起步。
-
--   :material-chart-line:{ .lg .middle } **每一步可审计**
+-   :material-rocket-launch-outline:{ .lg .middle } **一个文件，极简，极快**
 
     ---
 
-    每一次 LLM 调用、每一次工具执行，JSONL 全记录。会话可快照、行为可追踪，问题可定位。
+    一个工具只需 `name()`、`definition()`、`call()` 三个方法，编译出来单一二进制文件，启动不等待，内存不浪费。从云服务器到边缘设备，Rust 能到的地方，它就能跑。
+
+-   :material-chart-line:{ .lg .middle } **每一步，都有据可查**
+
+    ---
+
+    每一次 LLM 调用都被记录，每一次工具执行都有痕迹，会话可快照、行为可回放、事故可定位——你造的 Agent，你看得见。
 
 </div>
+
+---
+
+## 十行代码，一个 Agent
+
+下面的例子：你说*"我觉得有点冷"*，Agent 就把空调温度调高了，你的 `SmartAc` 工具封装空调协议，你的提示词定义管家角色，框架负责调度。
+
+```rust
+let llm = Arc::new(OpenAiClient::new(api_key, "gpt-4o".into(), None));
+
+let agent = PhiAgent::build(
+    base_agent_builder(llm)
+        .system_prompt(format!(
+            "你是一个智能家居管家。\n\n{}",
+            // 框架：调度循环
+            build_system_prompt()
+        ))
+        // 你的工具
+        .register_tool(SmartAc),
+    PhiAgentConfig::default(),
+)?;
+
+let session = agent.create_session().await;
+let mut renderer = create_stdout_renderer(&OutputFormat::default());
+agent.run_turn(session, "我觉得有点冷", |e| renderer.render(e)).await?;
+```
+
+```bash
+cargo add phi-agent
+```
+
+完整可运行版本见 [`examples/minimal/landing.rs`](https://github.com/hibuka-labs/phi-agent/blob/master/examples/minimal/landing.rs)。
 
 ---
 

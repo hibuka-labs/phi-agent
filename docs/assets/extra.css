@@ -4,9 +4,33 @@
   font-size: 0.65rem;
 }
 
-/* 三列卡片（首页） */
+/* 首页卡片布局 */
 @media screen and (min-width: 960px) {
   .grid.cards.col-3 {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 首页 hero 区：钩子句放大，定位段降一级，建立视觉层级 */
+.phi-hero > p:first-child {
+  font-size: clamp(1.18rem, 2.8vw, 1.4rem);
+  line-height: 1.35;
+  margin-bottom: 0.8em;
+}
+
+.phi-hero > p:nth-child(2) {
+  font-size: 1.05rem;
+  color: var(--md-default-fg-color--light);
+  max-width: 46rem;
+}
+
+/* 单列竖排：叙事型卡片，保留呼吸感与节奏 */
+.grid.cards.col-1 {
+  grid-template-columns: 1fr;
+}
+
+@media screen and (min-width: 960px) {
+  .grid.cards.col-1 > * {
+    max-width: 46rem;
   }
 }

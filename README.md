@@ -68,7 +68,7 @@ All opt-in via feature flags. `file` and `mcp` are enabled by default; `shell` a
 
 **Your domain, your rules.** Agent loop, session management, streaming events, tool routing, approval hooks — the framework does it all. You write zero glue code and focus on domain logic.
 
-**Single binary, zero runtime deps.** No Node.js. No Python. Compile to one file, drop it in, run it. `cargo install`, ten seconds.
+**Single binary.** Compile to one file, drop it in, run it. `cargo install phi-agent` — that's it.
 
 **Every step auditable.** Every LLM call, every tool execution, recorded as JSONL. Sessions are snapshot-able, behavior is traceable, issues are debuggable.
 
