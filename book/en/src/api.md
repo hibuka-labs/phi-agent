@@ -18,7 +18,7 @@ phi-agent's API documentation is auto-generated from doc comments and hosted on 
 
 phi-agent re-exports key types from [`agent-base`](https://docs.rs/agent-base):
 
-`AgentResult`, `Tool`, `ToolContext`, `ToolOutput`, `ToolControlFlow`, `OpenAiClient`, `ReasoningEffort`, `SafetyConfig`, `OutputFormat`, and more.
+`AgentResult`, `Tool`, `ToolContext`, `Content`, `OpenAiClient`, `ReasoningEffort`, `SafetyConfig`, `OutputFormat`, and more.
 
 ## Re-exports from agent-works
 

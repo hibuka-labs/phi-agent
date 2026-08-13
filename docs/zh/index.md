@@ -32,7 +32,7 @@ hide:
 
     ---
 
-    简单 Rust 内核，一个工具只需 `name()`、`definition()`、`call()` 三个方法，编译出来单一二进制文件，启动不等待，内存不浪费。从云服务器到边缘设备，Rust 能到的地方，它就能跑。
+    简单 Rust 内核，一个工具只需 `name()`、`description()`、`schema()`、`call()` 四个方法，编译出来单一二进制文件，启动不等待，内存不浪费。从云服务器到边缘设备，Rust 能到的地方，它就能跑。
 
 -   :material-target:{ .lg .middle } **你的领域，你做主**
 

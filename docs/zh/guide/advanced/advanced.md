@@ -75,7 +75,7 @@ builder = builder.middleware(LoggingMiddleware);
 实现 `ToolPolicy` trait 可以控制工具的执行行为——审批、执行前检查、执行后审计：
 
 ```rust
-use phi_agent::{AgentResult, ApprovalRequest, RiskLevel, ToolContext, ToolOutput, ToolPolicy};
+use phi_agent::{AgentResult, ApprovalRequest, Content, RiskLevel, ToolContext, ToolPolicy};
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -106,9 +106,9 @@ impl ToolPolicy for RiskAwarePolicy {
 
     // 3. 工具执行成功后的同步回调——用于审计、埋点
     fn after_call(
-        &self, tool_name: &str, _args: &Value, result: &ToolOutput, _ctx: &ToolContext,
+        &self, tool_name: &str, _args: &Value, result: &[Content], _ctx: &ToolContext,
     ) -> AgentResult<()> {
-        tracing::info!(tool = tool_name, summary = %result.summary, "工具执行完成");
+        tracing::info!(tool = tool_name, content_count = result.len(), "工具执行完成");
         Ok(())
     }
 }

@@ -75,7 +75,7 @@ Key `PostLlmCtx` fields:
 Implement the `ToolPolicy` trait to control tool execution behavior — approval, pre-execution checks, and post-execution auditing:
 
 ```rust
-use phi_agent::{AgentResult, ApprovalRequest, RiskLevel, ToolContext, ToolOutput, ToolPolicy};
+use phi_agent::{AgentResult, ApprovalRequest, Content, RiskLevel, ToolContext, ToolPolicy};
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -106,9 +106,9 @@ impl ToolPolicy for RiskAwarePolicy {
 
     // 3. Sync hook after successful execution — for auditing or metrics
     fn after_call(
-        &self, tool_name: &str, _args: &Value, result: &ToolOutput, _ctx: &ToolContext,
+        &self, tool_name: &str, _args: &Value, result: &[Content], _ctx: &ToolContext,
     ) -> AgentResult<()> {
-        tracing::info!(tool = tool_name, summary = %result.summary, "tool executed");
+        tracing::info!(tool = tool_name, content_count = result.len(), "tool executed");
         Ok(())
     }
 }

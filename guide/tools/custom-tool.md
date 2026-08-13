@@ -8,23 +8,25 @@ phi-agent doesn't bundle any tools — you bring your own by implementing the `T
 #[async_trait]
 pub trait Tool: Send + Sync {
     fn name(&self) -> &'static str;
-    fn definition(&self) -> Value;
-    async fn call(&self, args: &Value, ctx: &ToolContext) -> AgentResult<ToolOutput>;
+    fn description(&self) -> &'static str;
+    fn schema(&self) -> Value;
+    async fn call(&self, args: &Value, ctx: &ToolContext) -> AgentResult<Vec<Content>>;
 }
 ```
 
-Three things to implement:
+Four things to implement:
 
 | Method | Purpose |
 |--------|---------|
 | `name()` | Unique identifier the LLM uses to invoke this tool |
-| `definition()` | JSON Schema describing parameters (sent to the LLM) |
-| `call()` | The actual logic — receives parsed args, returns output |
+| `description()` | Human-readable description of what the tool does |
+| `schema()` | JSON Schema describing parameters (sent to the LLM) |
+| `call()` | The actual logic — receives parsed args, returns content |
 
 ## Example: Weather Tool
 
 ```rust
-use agent_base::{AgentResult, Tool, ToolContext, ToolControlFlow, ToolOutput};
+use agent_base::{AgentResult, Content, Tool, ToolContext};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
@@ -36,32 +38,27 @@ impl Tool for WeatherTool {
         "get_weather"
     }
 
-    fn definition(&self) -> Value {
+    fn description(&self) -> &'static str {
+        "Get current weather for a city"
+    }
+
+    fn schema(&self) -> Value {
         json!({
-            "name": "get_weather",
-            "description": "Get current weather for a city",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "city": {
-                        "type": "string",
-                        "description": "City name, e.g. 'Beijing'"
-                    }
-                },
-                "required": ["city"]
-            }
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "description": "City name, e.g. 'Beijing'"
+                }
+            },
+            "required": ["city"]
         })
     }
 
-    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
+    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
         let city = args["city"].as_str().unwrap_or("unknown");
         // In production, call a real weather API here
-        Ok(ToolOutput {
-            summary: format!("Weather in {}: 22°C, sunny", city),
-            control_flow: ToolControlFlow::Continue,
-            raw: None,
-            truncation: None,
-        })
+        Ok(vec![Content::text(format!("Weather in {}: 22°C, sunny", city))])
     }
 }
 ```
@@ -76,25 +73,22 @@ let builder = base_agent_builder(llm_client)
 let agent = PhiAgent::build(builder, config)?;
 ```
 
-## ToolOutput
+## Content
 
-`ToolOutput::new()` creates a simple text result. For more control:
+Tools return a `Vec<Content>`. `Content::text(...)` creates a simple text result:
 
 ```rust
-ToolOutput {
-    summary: "Done".into(),       // shown to user
-    raw: json!({"temp": 22}),     // full data (can be large)
-    control_flow: ToolControlFlow::Continue,  // Continue or Break
-    truncation: None,              // set if output was truncated
-}
+Ok(vec![Content::text("Done")])
 ```
+
+`Content` also supports images via `Content::image(data, mime_type)`, though only text is consumed by the first LLM adapter.
 
 ## Best Practices
 
 1. **One tool per file** — keep tool implementations focused and testable
 2. **Validate args** — never trust the LLM to provide correct types
 3. **Handle errors gracefully** — return meaningful error messages the LLM can act on
-4. **Keep `definition()` accurate** — if the LLM's understanding doesn't match reality, tool calls will fail
+4. **Keep `description()` and `schema()` accurate** — if the LLM's understanding doesn't match reality, tool calls will fail
 5. **Timeout long operations** — use `tokio::time::timeout` for network calls
 
 ## Full Example

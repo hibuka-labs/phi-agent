@@ -32,7 +32,7 @@ Generic agents are everywhere, but the real work — your work — needs an agen
 
     ---
 
-    A tool is three methods: `name()`, `definition()`, `call()`. Compiles to a single binary — instant startup, no wasted memory. From cloud servers to edge devices, wherever Rust compiles, it runs.
+    A tool is four methods: `name()`, `description()`, `schema()`, `call()`. Compiles to a single binary — instant startup, no wasted memory. From cloud servers to edge devices, wherever Rust compiles, it runs.
 
 -   :material-target:{ .lg .middle } **Your domain, your rules**
 

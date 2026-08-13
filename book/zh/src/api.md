@@ -18,7 +18,7 @@ phi-agent 的 API 文档从源码注释自动生成，托管在 [docs.rs](https:
 
 phi-agent 重导出了 [`agent-base`](https://docs.rs/agent-base) 的关键类型：
 
-`AgentResult`、`Tool`、`ToolContext`、`ToolOutput`、`ToolControlFlow`、`OpenAiClient`、`ReasoningEffort`、`SafetyConfig`、`OutputFormat` 等。
+`AgentResult`、`Tool`、`ToolContext`、`Content`、`OpenAiClient`、`ReasoningEffort`、`SafetyConfig`、`OutputFormat` 等。
 
 ## agent-works 重导出
 
