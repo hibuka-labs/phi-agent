@@ -62,3 +62,30 @@ pub fn build_system_prompt_cn() -> String {
     );
     prompt
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_system_prompt() {
+        let prompt = build_system_prompt();
+        assert!(prompt.contains("versatile AI assistant"));
+        assert!(prompt.contains("[Conversation Type Detection]"));
+        assert!(prompt.contains("[Execution Guidelines]"));
+        assert!(prompt.contains("[Wrap-Up]"));
+        // Memory instructions are appended after a separator.
+        assert!(prompt.contains("\n---\n"));
+    }
+
+    #[test]
+    fn test_build_system_prompt_cn() {
+        let prompt = build_system_prompt_cn();
+        // Base prompt is preserved, then the CN network hints are appended.
+        assert!(prompt.contains("versatile AI assistant"));
+        assert!(prompt.contains("[Network Environment]"));
+        assert!(prompt.contains("mainland China"));
+        assert!(prompt.contains("Baidu"));
+        assert!(prompt.contains("gitee.com"));
+    }
+}

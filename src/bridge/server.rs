@@ -161,3 +161,180 @@ impl Tool for ProxyTool {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::agent::builder::base_agent_builder;
+    use agent_base::ToolContext;
+    use async_trait::async_trait;
+    use futures_core::Stream;
+    use serde_json::json;
+    use std::pin::Pin;
+    use std::sync::Arc;
+    use std::task::{Context, Poll};
+
+    struct StubClient;
+
+    /// Yields one `Text` chunk, one `Stop` chunk, then ends — enough for the
+    /// react loop to complete a turn.
+    struct StopStream {
+        state: u8,
+    }
+
+    impl Stream for StopStream {
+        type Item = agent_base::AgentResult<agent_base::StreamChunk>;
+
+        fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            match self.state {
+                0 => {
+                    self.state = 1;
+                    Poll::Ready(Some(Ok(agent_base::StreamChunk::Text("hello".to_string()))))
+                },
+                1 => {
+                    self.state = 2;
+                    Poll::Ready(Some(Ok(agent_base::StreamChunk::Stop { finish_reason: Some("stop".to_string()) })))
+                },
+                _ => Poll::Ready(None),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl agent_base::StreamClient for StubClient {
+        async fn stream(
+            &self,
+            _messages: &[agent_base::ChatMessage],
+            _tools: &[serde_json::Value],
+            _reasoning: Option<&agent_base::ReasoningConfig>,
+            _response_format: Option<&agent_base::ResponseFormat>,
+        ) -> agent_base::AgentResult<Pin<Box<dyn Stream<Item = agent_base::AgentResult<agent_base::StreamChunk>> + Send>>>
+        {
+            Ok(Box::pin(StopStream { state: 0 }))
+        }
+
+        fn capabilities(&self) -> agent_base::LlmCapabilities {
+            agent_base::LlmCapabilities::default()
+        }
+    }
+
+    fn client() -> Arc<dyn agent_base::StreamClient> {
+        Arc::new(StubClient)
+    }
+
+    fn runtime() -> agent_base::AgentRuntime {
+        base_agent_builder(client()).build().unwrap()
+    }
+
+    /// Register an "echo" proxy tool and return its handle from the registry.
+    async fn register_echo(server: &ProtocolServer, rt: &agent_base::AgentRuntime) -> Arc<dyn agent_base::Tool> {
+        server.register_tool("echo".to_string(), "echo tool".to_string(), json!({ "type": "object" })).await;
+        let tools = rt.tools_mut();
+        let registry = tools.read().await;
+        registry.get("echo").expect("echo tool should be registered")
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_from_builder() {
+        let server = ProtocolServer::from_builder(base_agent_builder(client())).unwrap();
+        let _ = server;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_register_and_list_tools() {
+        let rt = runtime();
+        let server = ProtocolServer::new(rt);
+        server.register_tool("echo".to_string(), "echo tool".to_string(), json!({ "type": "object" })).await;
+
+        let tools = server.list_tools().await;
+        let echo = tools.iter().find(|t| t.name == "echo").expect("echo tool should be listed");
+        assert_eq!(echo.description, "echo tool");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_proxy_tool_call_without_slot_errors() {
+        let rt = runtime();
+        let server = ProtocolServer::new(rt.clone());
+        let tool = register_echo(&server, &rt).await;
+
+        let result = tool.call(&json!({}), &ToolContext::for_test()).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_proxy_tool_call_delivers_result() {
+        let rt = runtime();
+        let server = ProtocolServer::new(rt.clone());
+        let tool = register_echo(&server, &rt).await;
+
+        let tx = server.prepare_tool_call().await;
+        let args = json!({});
+        let ctx = ToolContext::for_test();
+        let call = tool.call(&args, &ctx);
+        tx.send(Ok(vec![Content::text("result".to_string())])).unwrap();
+        let result = call.await.unwrap();
+
+        assert_eq!(result.len(), 1);
+        match &result[0] {
+            Content::Text { text } => assert_eq!(text, "result"),
+            other => panic!("expected text content, got {other:?}"),
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_proxy_tool_call_cancelled_when_sender_dropped() {
+        let rt = runtime();
+        let server = ProtocolServer::new(rt.clone());
+        let tool = register_echo(&server, &rt).await;
+
+        let tx = server.prepare_tool_call().await;
+        drop(tx); // dropping the only sender closes the channel
+        let result = tool.call(&json!({}), &ToolContext::for_test()).await.unwrap();
+
+        assert_eq!(result.len(), 1);
+        match &result[0] {
+            Content::Text { text } => assert_eq!(text, "Tool call cancelled"),
+            other => panic!("expected text content, got {other:?}"),
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_create_session() {
+        let rt = runtime();
+        let server = ProtocolServer::new(rt);
+
+        let (_, ext) = server.create_session(None).await;
+        assert!(ext.is_none());
+
+        let (_, ext) = server.create_session(Some("ext".to_string())).await;
+        assert_eq!(ext.as_deref(), Some("ext"));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_or_create_session_reuse() {
+        let rt = runtime();
+        let server = ProtocolServer::new(rt);
+
+        let a = server.get_or_create_session(Some("shared".to_string())).await;
+        let b = server.get_or_create_session(Some("shared".to_string())).await;
+        assert_eq!(a, b);
+
+        let c = server.get_or_create_session(None).await;
+        let d = server.get_or_create_session(None).await;
+        assert_ne!(c, d);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_subscribe_events_and_run_turn() {
+        let rt = runtime();
+        let server = ProtocolServer::new(rt);
+
+        let _rx = server.subscribe_events();
+        let sid = server.create_session(None).await.0;
+        let outcome = server.run_turn(&sid, "hi", |_| Ok(())).await;
+        assert!(outcome.is_ok());
+
+        server.cancel();
+        let _ = sid;
+    }
+}

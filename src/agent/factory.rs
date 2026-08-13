@@ -475,3 +475,136 @@ impl PhiAgent {
         agent_works::mcp::McpServer::new(self.runtime.clone(), config)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prompt::build_system_prompt;
+    use async_trait::async_trait;
+    use futures_core::Stream;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+
+    struct StubClient;
+
+    /// Yields one `Text` chunk, one `Stop` chunk, then ends — a minimal valid
+    /// LLM response that lets the react loop complete a turn.
+    struct StopStream {
+        state: u8,
+    }
+
+    impl Stream for StopStream {
+        type Item = agent_base::AgentResult<agent_base::StreamChunk>;
+
+        fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            match self.state {
+                0 => {
+                    self.state = 1;
+                    Poll::Ready(Some(Ok(agent_base::StreamChunk::Text("hello".to_string()))))
+                },
+                1 => {
+                    self.state = 2;
+                    Poll::Ready(Some(Ok(agent_base::StreamChunk::Stop { finish_reason: Some("stop".to_string()) })))
+                },
+                _ => Poll::Ready(None),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl agent_base::StreamClient for StubClient {
+        async fn stream(
+            &self,
+            _messages: &[agent_base::ChatMessage],
+            _tools: &[serde_json::Value],
+            _reasoning: Option<&agent_base::ReasoningConfig>,
+            _response_format: Option<&agent_base::ResponseFormat>,
+        ) -> agent_base::AgentResult<Pin<Box<dyn Stream<Item = agent_base::AgentResult<agent_base::StreamChunk>> + Send>>>
+        {
+            Ok(Box::pin(StopStream { state: 0 }))
+        }
+
+        fn capabilities(&self) -> agent_base::LlmCapabilities {
+            agent_base::LlmCapabilities::default()
+        }
+    }
+
+    fn client() -> Arc<dyn agent_base::StreamClient> {
+        Arc::new(StubClient)
+    }
+
+    fn build_agent() -> PhiAgent {
+        let builder = PhiAgent::builder(client(), build_system_prompt());
+        PhiAgent::build(builder, PhiAgentConfig::default()).unwrap()
+    }
+
+    #[test]
+    fn test_phi_agent_config_default() {
+        let cfg = PhiAgentConfig::default();
+        assert!(cfg.model.is_empty());
+        assert!(!cfg.enable_thinking);
+        assert!(cfg.thinking_budget.is_none());
+        assert!(cfg.max_turns.is_none());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_builder_and_build() {
+        let builder = PhiAgent::builder(client(), "custom prompt".to_string());
+        let agent = PhiAgent::build(builder, PhiAgentConfig::default()).unwrap();
+        let _ = agent.runtime();
+        assert!(agent.config.model.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_delegate_methods() {
+        let agent = build_agent();
+
+        let session = agent.create_session().await;
+        agent.set_reasoning_effort(agent_base::ReasoningEffort::High).await;
+
+        let tools = agent.list_tools().await;
+        let _ = tools;
+
+        // A turn with the stub client's Text+Stop stream should complete.
+        let outcome = agent.run_turn(session, "hi", |_| Ok(())).await;
+        assert!(outcome.is_ok());
+
+        assert!(!agent.is_cancelled());
+        agent.cancel();
+        assert!(agent.is_cancelled());
+    }
+
+    #[cfg(feature = "mcp")]
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_into_mcp_server() {
+        let agent = build_agent();
+        let server = agent.into_mcp_server(agent_works::mcp::McpServeConfig::default());
+        let _ = server;
+    }
+
+    #[cfg(feature = "mcp")]
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_attach_mcp_connection_failure_rolls_back() {
+        let agent = build_agent();
+        // A Stdio transport with a nonexistent command fails at `McpClient::new`
+        // (process spawn), which surfaces as an attach error and rolls back.
+        let config = agent_works::mcp::McpServerConfig {
+            name: "bogus".to_string(),
+            transport: agent_works::mcp::McpTransport::Stdio {
+                command: "definitely-not-a-real-command-xyz".to_string(),
+                args: vec![],
+            },
+            auto_reconnect: false,
+        };
+        // Spawn failure → attach fails and rolls the server back.
+        assert!(agent.attach_mcp(config).await.is_err());
+    }
+
+    #[cfg(feature = "mcp")]
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_detach_mcp_noop_when_not_attached() {
+        let agent = build_agent();
+        // No hub initialized → detach is a no-op.
+        agent.detach_mcp("never-attached").await;
+    }
+}
