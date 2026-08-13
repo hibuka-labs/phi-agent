@@ -11,7 +11,7 @@
 #[path = "../common/mod.rs"]
 mod common;
 
-use agent_base::{AgentResult, Tool, ToolContext, ToolControlFlow, ToolOutput};
+use agent_base::{AgentResult, Content, Tool, ToolContext};
 use async_trait::async_trait;
 use common::client;
 use phi_agent::{
@@ -30,22 +30,22 @@ impl Tool for SystemInfoTool {
         "system_info"
     }
 
-    fn definition(&self) -> Value {
-        json!({
-            "name": "system_info",
-            "description": "Get current system information (OS, time, working directory)",
-            "parameters": { "type": "object", "properties": {}, "required": [] }
-        })
+    fn description(&self) -> &'static str {
+        "Get current system information (OS, time, working directory)"
     }
 
-    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
+    fn schema(&self) -> Value {
+        json!({ "type": "object", "properties": {}, "required": [] })
+    }
+
+    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
         let info = format!(
             "OS: {} | Time: {} | CWD: {}",
             std::env::consts::OS,
             chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
             std::env::current_dir().map(|p| p.display().to_string()).unwrap_or_else(|_| "unknown".into()),
         );
-        Ok(ToolOutput { summary: info, control_flow: ToolControlFlow::Continue, ..Default::default() })
+        Ok(vec![Content::text(info)])
     }
 }
 
@@ -59,33 +59,25 @@ impl Tool for EnvVarTool {
         "env_var"
     }
 
-    fn definition(&self) -> Value {
+    fn description(&self) -> &'static str {
+        "Read an environment variable value"
+    }
+
+    fn schema(&self) -> Value {
         json!({
-            "name": "env_var",
-            "description": "Read an environment variable value",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "name": { "type": "string", "description": "Environment variable name" }
-                },
-                "required": ["name"]
-            }
+            "type": "object",
+            "properties": {
+                "name": { "type": "string", "description": "Environment variable name" }
+            },
+            "required": ["name"]
         })
     }
 
-    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
+    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
         let name = args["name"].as_str().unwrap_or("");
         match std::env::var(name) {
-            Ok(val) => Ok(ToolOutput {
-                summary: format!("{}={}", name, val),
-                control_flow: ToolControlFlow::Continue,
-                ..Default::default()
-            }),
-            Err(_) => Ok(ToolOutput {
-                summary: format!("{} is not set", name),
-                control_flow: ToolControlFlow::Continue,
-                ..Default::default()
-            }),
+            Ok(val) => Ok(vec![Content::text(format!("{}={}", name, val))]),
+            Err(_) => Ok(vec![Content::text(format!("{} is not set", name))]),
         }
     }
 }

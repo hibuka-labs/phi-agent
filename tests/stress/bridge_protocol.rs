@@ -8,8 +8,7 @@
 //! correctness of the sequential protocol flow.
 
 use agent_base::{
-    AgentResult, ChatMessage, LlmCapabilities, LlmClient, ReasoningConfig, ResponseFormat, StreamChunk,
-    ToolControlFlow, ToolOutput,
+    AgentResult, ChatMessage, Content, LlmCapabilities, LlmClient, ReasoningConfig, ResponseFormat, StreamChunk,
 };
 use futures_core::Stream;
 use phi_agent::base_agent_builder;
@@ -62,7 +61,7 @@ impl LlmClient for EmptyLlmClient {
 }
 
 fn build_server() -> ProtocolServer {
-    let client: Arc<dyn LlmClient> = Arc::new(EmptyLlmClient);
+    let client = agent_base::llm::adapt(Arc::new(EmptyLlmClient));
     let builder = base_agent_builder(client).system_prompt(build_system_prompt());
     ProtocolServer::from_builder(builder).unwrap()
 }
@@ -241,25 +240,11 @@ async fn test_proxy_tool_slot_round_trip() {
     let tx = server.prepare_tool_call().await;
 
     // 4. SDK sends the tool result back through the slot
-    tx.send(Ok(ToolOutput {
-        summary: "bridge_tool executed: result=42".into(),
-        raw: Some(serde_json::json!({"result": 42})),
-        control_flow: ToolControlFlow::Continue,
-        truncation: None,
-    }))
-    .unwrap();
+    tx.send(Ok(vec![Content::text("bridge_tool executed: result=42".to_string())])).unwrap();
 
     // 5. After sending, the slot is consumed — a new prepare gives a fresh slot
     let tx2 = server.prepare_tool_call().await;
-    assert!(
-        tx2.send(Ok(ToolOutput {
-            summary: "second".into(),
-            raw: None,
-            control_flow: ToolControlFlow::Continue,
-            truncation: None,
-        }))
-        .is_ok()
-    );
+    assert!(tx2.send(Ok(vec![Content::text("second".to_string())])).is_ok());
 }
 
 /// prepare_tool_call creates a sender; sending a result closes the slot.
@@ -267,12 +252,7 @@ async fn test_proxy_tool_slot_round_trip() {
 async fn test_prepare_tool_call_slot() {
     let server = build_server();
     let tx = server.prepare_tool_call().await;
-    let result = tx.send(Ok(ToolOutput {
-        summary: "done".into(),
-        raw: None,
-        control_flow: ToolControlFlow::Continue,
-        truncation: None,
-    }));
+    let result = tx.send(Ok(vec![Content::text("done".to_string())]));
     assert!(result.is_ok(), "sending to the prepared slot should succeed");
 }
 
@@ -282,20 +262,8 @@ async fn test_prepare_tool_call_reuse() {
     let server = build_server();
 
     let tx1 = server.prepare_tool_call().await;
-    tx1.send(Ok(ToolOutput {
-        summary: "first".into(),
-        raw: None,
-        control_flow: ToolControlFlow::Continue,
-        truncation: None,
-    }))
-    .unwrap();
+    tx1.send(Ok(vec![Content::text("first".to_string())])).unwrap();
 
     let tx2 = server.prepare_tool_call().await;
-    tx2.send(Ok(ToolOutput {
-        summary: "second".into(),
-        raw: None,
-        control_flow: ToolControlFlow::Continue,
-        truncation: None,
-    }))
-    .unwrap();
+    tx2.send(Ok(vec![Content::text("second".to_string())])).unwrap();
 }

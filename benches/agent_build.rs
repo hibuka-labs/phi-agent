@@ -1,8 +1,8 @@
 //! Benchmarks: Agent construction with varying tool counts.
 
 use agent_base::{
-    AgentResult, ChatMessage, LlmCapabilities, LlmClient, ReasoningConfig, ResponseFormat, StreamChunk, Tool,
-    ToolContext, ToolControlFlow, ToolMetadata, ToolOutput,
+    AgentResult, ChatMessage, Content, LlmCapabilities, LlmClient, ReasoningConfig, ResponseFormat, StreamChunk, Tool,
+    ToolContext, ToolMetadata,
 };
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use futures_core::Stream;
@@ -31,17 +31,14 @@ impl Tool for NoopTool {
     fn name(&self) -> &'static str {
         self.name
     }
-    fn definition(&self) -> serde_json::Value {
-        serde_json::json!({
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": {}
-            }
-        })
+    fn description(&self) -> &'static str {
+        self.description
     }
-    async fn call(&self, _args: &serde_json::Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
-        Ok(ToolOutput { summary: "ok".into(), raw: None, control_flow: ToolControlFlow::Continue, truncation: None })
+    fn schema(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+    async fn call(&self, _args: &serde_json::Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
+        Ok(vec![Content::text("ok".to_string())])
     }
     fn metadata(&self) -> ToolMetadata {
         ToolMetadata {

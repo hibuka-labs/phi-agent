@@ -11,7 +11,7 @@
 #[path = "../common/mod.rs"]
 mod common;
 
-use agent_base::{AgentResult, Tool, ToolContext, ToolControlFlow, ToolOutput};
+use agent_base::{AgentResult, Content, Tool, ToolContext};
 use async_trait::async_trait;
 use common::client;
 use phi_agent::{
@@ -31,35 +31,30 @@ impl Tool for CalculatorTool {
         "calculator"
     }
 
-    fn definition(&self) -> Value {
+    fn description(&self) -> &'static str {
+        "Evaluate a simple arithmetic expression"
+    }
+
+    fn schema(&self) -> Value {
         json!({
-            "name": "calculator",
-            "description": "Evaluate a simple arithmetic expression",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "expression": {
-                        "type": "string",
-                        "description": "Math expression, e.g. '2 + 3 * 4'"
-                    }
-                },
-                "required": ["expression"]
-            }
+            "type": "object",
+            "properties": {
+                "expression": {
+                    "type": "string",
+                    "description": "Math expression, e.g. '2 + 3 * 4'"
+                }
+            },
+            "required": ["expression"]
         })
     }
 
-    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
+    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
         let expr = args["expression"].as_str().unwrap_or("0");
 
         // Simple evaluation — in production, use a proper expression parser
         let result = evaluate(expr);
 
-        Ok(ToolOutput {
-            summary: format!("{} = {}", expr, result),
-            control_flow: ToolControlFlow::Continue,
-            raw: None,
-            truncation: None,
-        })
+        Ok(vec![Content::text(format!("{} = {}", expr, result))])
     }
 }
 

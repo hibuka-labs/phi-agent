@@ -206,12 +206,7 @@ async fn test_prepare_tool_call_sender_usable() {
 
     let tx = server.prepare_tool_call().await;
     // Sender should be usable
-    let result = tx.send(Ok(agent_base::ToolOutput {
-        summary: "done".into(),
-        raw: None,
-        control_flow: agent_base::ToolControlFlow::Continue,
-        truncation: None,
-    }));
+    let result = tx.send(Ok(vec![agent_base::Content::text("done".to_string())]));
     assert!(result.is_ok());
 }
 

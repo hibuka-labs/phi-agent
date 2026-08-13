@@ -56,7 +56,7 @@ impl LlmClient for EmptyLlmClient {
 /// Test: 10 concurrent sessions, each verified to be unique.
 #[tokio::test(flavor = "multi_thread")]
 async fn test_concurrent_sessions_isolated() {
-    let client: Arc<dyn LlmClient> = Arc::new(EmptyLlmClient);
+    let client = agent_base::llm::adapt(Arc::new(EmptyLlmClient));
     let builder = base_agent_builder(client).system_prompt(build_system_prompt());
     let server = ProtocolServer::from_builder(builder).unwrap();
 
@@ -84,7 +84,7 @@ async fn test_concurrent_sessions_isolated() {
 /// Test: rapid session create/destroy cycle.
 #[tokio::test(flavor = "multi_thread")]
 async fn test_rapid_session_cycle() {
-    let client: Arc<dyn LlmClient> = Arc::new(EmptyLlmClient);
+    let client = agent_base::llm::adapt(Arc::new(EmptyLlmClient));
     let builder = base_agent_builder(client).system_prompt(build_system_prompt());
     let server = ProtocolServer::from_builder(builder).unwrap();
 
@@ -97,7 +97,7 @@ async fn test_rapid_session_cycle() {
 /// Test: concurrent get_or_create_session with same external_id (race on HashMap).
 #[tokio::test(flavor = "multi_thread")]
 async fn test_session_id_reuse_concurrent() {
-    let client: Arc<dyn LlmClient> = Arc::new(EmptyLlmClient);
+    let client = agent_base::llm::adapt(Arc::new(EmptyLlmClient));
     let builder = base_agent_builder(client).system_prompt(build_system_prompt());
     let server = ProtocolServer::from_builder(builder).unwrap();
 
@@ -124,7 +124,7 @@ async fn test_session_id_reuse_concurrent() {
 /// Test: event subscription is live under concurrency.
 #[tokio::test(flavor = "multi_thread")]
 async fn test_event_subscription_concurrent() {
-    let client: Arc<dyn LlmClient> = Arc::new(EmptyLlmClient);
+    let client = agent_base::llm::adapt(Arc::new(EmptyLlmClient));
     let builder = base_agent_builder(client).system_prompt(build_system_prompt());
     let server = ProtocolServer::from_builder(builder).unwrap();
 

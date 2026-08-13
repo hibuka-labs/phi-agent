@@ -357,9 +357,6 @@ impl PhiAgent {
         let mut registry = tools.write().await;
         hub.register_server(&mut registry, &name).await;
 
-        // Inject framework dependencies (e.g. EventBus) into the new tools
-        self.runtime.inject_framework_deps(&registry);
-
         let count: usize = discovered.iter().filter(|(n, _)| n == &name).map(|(_, t)| t.len()).sum();
         if count == 0 {
             tracing::warn!(

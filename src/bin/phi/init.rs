@@ -13,7 +13,7 @@ const MAIN_RS: &str = r#"use phi_agent::{
     PhiAgent, PhiAgentConfig, OpenAiClient,
     SafetyConfig, ReasoningEffort,
     OutputFormat, create_stdout_renderer,
-    AgentResult, Tool, ToolContext, ToolControlFlow, ToolOutput,
+    AgentResult, Content, Tool, ToolContext,
 };
 use async_trait::async_trait;
 use rustyline::DefaultEditor;
@@ -28,28 +28,20 @@ struct ClockTool;
 impl Tool for ClockTool {
     fn name(&self) -> &'static str { "get_time" }
 
-    fn definition(&self) -> Value {
+    fn description(&self) -> &'static str {
+        "获取当前日期和时间"
+    }
+
+    fn schema(&self) -> Value {
         json!({
-            "type": "function",
-            "function": {
-                "name": "get_time",
-                "description": "获取当前日期和时间",
-                "parameters": {
-                    "type": "object",
-                    "properties": {}
-                }
-            }
+            "type": "object",
+            "properties": {}
         })
     }
 
-    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
+    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        Ok(ToolOutput {
-            summary: format!("当前时间：{}", now),
-            control_flow: ToolControlFlow::Continue,
-            raw: None,
-            truncation: None,
-        })
+        Ok(vec![Content::text(format!("当前时间：{}", now))])
     }
 }
 
@@ -137,7 +129,7 @@ use phi_agent::{
     PhiAgent, PhiAgentConfig, OpenAiClient,
     SafetyConfig, ReasoningEffort,
     OutputFormat, create_stdout_renderer,
-    AgentResult, Tool, ToolContext, ToolControlFlow, ToolOutput,
+    AgentResult, Content, Tool, ToolContext,
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -151,24 +143,20 @@ struct ClockTool;
 impl Tool for ClockTool {
     fn name(&self) -> &'static str { "get_time" }
 
-    fn definition(&self) -> Value {
+    fn description(&self) -> &'static str {
+        "获取当前日期和时间"
+    }
+
+    fn schema(&self) -> Value {
         json!({
-            "type": "function",
-            "function": {
-                "name": "get_time",
-                "description": "获取当前日期和时间",
-                "parameters": { "type": "object", "properties": {} }
-            }
+            "type": "object",
+            "properties": {}
         })
     }
 
-    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
+    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        Ok(ToolOutput {
-            summary: format!("当前时间：{}", now),
-            control_flow: ToolControlFlow::Continue,
-            raw: None, truncation: None,
-        })
+        Ok(vec![Content::text(format!("当前时间：{}", now))])
     }
 }
 

@@ -176,16 +176,12 @@ pub async fn run() -> anyhow::Result<()> {
                                     continue;
                                 }
                                 // Handle ToolResult
-                                if let Ok(IncomingMessage::ToolResult { call_id: _, summary, raw, .. }) =
+                                if let Ok(IncomingMessage::ToolResult { call_id: _, summary, .. }) =
                                     serde_json::from_str(&l)
                                 {
                                     dbg_log!("tool_result");
                                     if let Some(tx) = tool_tx.take() {
-                                        let _ = tx.send(Ok(phi_agent::ToolOutput {
-                                            summary, raw,
-                                            control_flow: phi_agent::ToolControlFlow::Break,
-                                            truncation: None,
-                                        }));
+                                        let _ = tx.send(Ok(vec![phi_agent::Content::text(summary)]));
                                         dbg_log!("result sent via slot");
                                     } else {
                                         dbg_log!("WARN: no tool_tx available");

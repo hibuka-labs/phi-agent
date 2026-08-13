@@ -8,13 +8,16 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use agent_base::{
-    AgentResult, AgentRuntime, RunOutcome, RuntimeEvent, SessionId, Tool, ToolContext, ToolControlFlow, ToolMetadata,
-    ToolOutput,
+    AgentResult, AgentRuntime, Content, RunOutcome, RuntimeEvent, SessionId, Tool, ToolContext, ToolMetadata,
 };
 use agent_works::AgentBuilder;
 use async_trait::async_trait;
 use serde_json::Value;
 use tokio::sync::{Mutex, mpsc};
+
+/// A tool-call result delivered back through the bridge slot: either the
+/// tool's content or an execution error.
+type ToolCallResult = AgentResult<Vec<Content>>;
 
 /// Bridge protocol server — wraps an [`AgentRuntime`] and exposes it over
 /// the NDJSON bridge protocol for external SDK consumption.
@@ -27,7 +30,7 @@ pub struct ProtocolServer {
     runtime: AgentRuntime,
     /// Single-slot: the next tool call's response receiver.
     /// serve loop pushes, ProxyTool pops.
-    slot: Arc<Mutex<Option<mpsc::UnboundedReceiver<AgentResult<ToolOutput>>>>>,
+    slot: Arc<Mutex<Option<mpsc::UnboundedReceiver<ToolCallResult>>>>,
     /// Map external_id → SessionId so that runs with the same
     /// external_id reuse the same session.
     sessions: Arc<Mutex<HashMap<String, SessionId>>>,
@@ -58,7 +61,7 @@ impl ProtocolServer {
 
     /// Set up the response channel for the NEXT tool call.
     /// Returns the sender — keep it; send the result when the SDK replies.
-    pub async fn prepare_tool_call(&self) -> mpsc::UnboundedSender<AgentResult<ToolOutput>> {
+    pub async fn prepare_tool_call(&self) -> mpsc::UnboundedSender<ToolCallResult> {
         let (tx, rx) = mpsc::unbounded_channel();
         *self.slot.lock().await = Some(rx);
         tx
@@ -127,7 +130,7 @@ struct ProxyTool {
     name: String,
     description: String,
     parameters: Value,
-    slot: Arc<Mutex<Option<mpsc::UnboundedReceiver<AgentResult<ToolOutput>>>>>,
+    slot: Arc<Mutex<Option<mpsc::UnboundedReceiver<ToolCallResult>>>>,
 }
 
 #[async_trait]
@@ -136,18 +139,15 @@ impl Tool for ProxyTool {
         Box::leak(self.name.clone().into_boxed_str())
     }
 
-    fn definition(&self) -> Value {
-        serde_json::json!({
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.parameters,
-            }
-        })
+    fn description(&self) -> &'static str {
+        Box::leak(self.description.clone().into_boxed_str())
     }
 
-    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
+    fn schema(&self) -> Value {
+        self.parameters.clone()
+    }
+
+    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
         let mut rx = self
             .slot
             .lock()
@@ -157,12 +157,7 @@ impl Tool for ProxyTool {
 
         match rx.recv().await {
             Some(result) => result,
-            None => Ok(ToolOutput {
-                summary: "Tool call cancelled".to_string(),
-                raw: None,
-                control_flow: ToolControlFlow::Break,
-                truncation: None,
-            }),
+            None => Ok(vec![Content::text("Tool call cancelled".to_string())]),
         }
     }
 }

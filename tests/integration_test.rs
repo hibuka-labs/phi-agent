@@ -9,8 +9,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use agent_base::{
-    AgentResult, ChatMessage, LlmCapabilities, LlmClient, ReasoningConfig, ReasoningEffort, ResponseFormat,
-    StreamChunk, Tool, ToolContext, ToolControlFlow, ToolOutput,
+    AgentResult, ChatMessage, Content, LlmCapabilities, LlmClient, ReasoningConfig, ReasoningEffort, ResponseFormat,
+    StreamChunk, Tool, ToolContext,
 };
 use async_trait::async_trait;
 use futures_core::Stream;
@@ -152,19 +152,16 @@ impl Tool for CustomTool {
         "custom_tool"
     }
 
-    fn definition(&self) -> Value {
-        serde_json::json!({
-            "type": "function",
-            "function": {
-                "name": "custom_tool",
-                "description": "A user-defined custom tool",
-                "parameters": { "type": "object", "properties": {} }
-            }
-        })
+    fn description(&self) -> &'static str {
+        "A user-defined custom tool"
     }
 
-    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
-        Ok(ToolOutput { summary: "ok".into(), raw: None, control_flow: ToolControlFlow::Continue, truncation: None })
+    fn schema(&self) -> Value {
+        serde_json::json!({ "type": "object", "properties": {} })
+    }
+
+    async fn call(&self, _args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
+        Ok(vec![Content::text("ok".to_string())])
     }
 }
 

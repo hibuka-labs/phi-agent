@@ -11,7 +11,7 @@
 #[path = "../common/mod.rs"]
 mod common;
 
-use agent_base::{AgentResult, Tool, ToolContext, ToolControlFlow, ToolOutput};
+use agent_base::{AgentResult, Content, Tool, ToolContext};
 use async_trait::async_trait;
 use phi_agent::{
     OutputFormat, PhiAgent, PhiAgentConfig, base_agent_builder, build_system_prompt, create_stdout_renderer,
@@ -28,34 +28,26 @@ impl Tool for SmartAc {
         "control_ac"
     }
 
-    fn definition(&self) -> Value {
+    fn description(&self) -> &'static str {
+        "Adjust the air conditioner temperature"
+    }
+
+    fn schema(&self) -> Value {
         json!({
-            "type": "function",
-            "function": {
-                "name": "control_ac",
-                "description": "Adjust the air conditioner temperature",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "temperature": {
-                            "type": "integer",
-                            "description": "Target temperature in Celsius, e.g. 26"
-                        }
-                    },
-                    "required": ["temperature"]
+            "type": "object",
+            "properties": {
+                "temperature": {
+                    "type": "integer",
+                    "description": "Target temperature in Celsius, e.g. 26"
                 }
-            }
+            },
+            "required": ["temperature"]
         })
     }
 
-    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
+    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
         let temp = args["temperature"].as_i64().unwrap_or(26);
-        Ok(ToolOutput {
-            summary: format!("Air conditioner set to {temp}°C"),
-            control_flow: ToolControlFlow::Continue,
-            raw: None,
-            truncation: None,
-        })
+        Ok(vec![Content::text(format!("Air conditioner set to {temp}°C"))])
     }
 }
 

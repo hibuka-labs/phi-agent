@@ -19,8 +19,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::task::{Context, Poll};
 
 use agent_base::{
-    AgentResult, ApprovalRequest, ChatMessage, LlmCapabilities, LlmClient, Middleware, PostLlmCtx, ReasoningConfig,
-    ResponseFormat, RuntimeEvent, StreamChunk, Tool, ToolContext, ToolControlFlow, ToolOutput, ToolPolicy,
+    AgentResult, ApprovalRequest, ChatMessage, Content, LlmCapabilities, LlmClient, Middleware, PostLlmCtx,
+    ReasoningConfig, ResponseFormat, RuntimeEvent, StreamChunk, Tool, ToolContext, ToolPolicy,
 };
 use async_trait::async_trait;
 use futures_core::Stream;
@@ -142,29 +142,24 @@ impl Tool for EchoTool {
         "echo"
     }
 
-    fn definition(&self) -> Value {
+    fn description(&self) -> &'static str {
+        "Echo a message back"
+    }
+
+    fn schema(&self) -> Value {
         json!({
-            "name": "echo",
-            "description": "Echo a message back",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "msg": { "type": "string", "description": "The message to echo" }
-                },
-                "required": ["msg"]
-            }
+            "type": "object",
+            "properties": {
+                "msg": { "type": "string", "description": "The message to echo" }
+            },
+            "required": ["msg"]
         })
     }
 
-    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<ToolOutput> {
+    async fn call(&self, args: &Value, _ctx: &ToolContext) -> AgentResult<Vec<Content>> {
         let msg = args["msg"].as_str().unwrap_or("ok");
         println!("    → EchoTool.call() executing with msg=\"{msg}\"");
-        Ok(ToolOutput {
-            summary: format!("EchoTool executed: {msg}"),
-            control_flow: ToolControlFlow::Continue,
-            raw: None,
-            truncation: None,
-        })
+        Ok(vec![Content::text(format!("EchoTool executed: {msg}"))])
     }
 }
 
@@ -198,9 +193,9 @@ impl ToolPolicy for DemoPolicy {
     }
 
     /// 3. after_call — callback after successful execution
-    fn after_call(&self, tool_name: &str, _args: &Value, result: &ToolOutput, _ctx: &ToolContext) -> AgentResult<()> {
+    fn after_call(&self, tool_name: &str, _args: &Value, result: &[Content], _ctx: &ToolContext) -> AgentResult<()> {
         self.after_count.fetch_add(1, Ordering::SeqCst);
-        println!("  [ToolPolicy] after_call('{tool_name}') — result: {}", result.summary);
+        println!("  [ToolPolicy] after_call('{tool_name}') — result: {}", agent_base::tool::content_text(result));
         Ok(())
     }
 }

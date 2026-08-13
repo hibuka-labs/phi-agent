@@ -28,10 +28,10 @@ pub mod session;
 // because phi-agent is a full-stack framework that includes multi-agent, skills, MCP, etc.
 // For the bare runtime builder, use agent_base::AgentBuilder directly.
 pub use agent_base::{
-    AgentError, AgentResult, AgentRuntime, ApprovalHandler, ApprovalRequest, ConsecutiveFailureRecovery, LlmClient,
-    Middleware, OpenAiClient, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx, ReasoningConfig, ReasoningEffort,
-    RunOutcome, RuntimeEvent, SafetyConfig, SessionId, Tool, ToolContext, ToolControlFlow, ToolMetadata, ToolOutput,
-    ToolPolicy, TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
+    AgentError, AgentResult, AgentRuntime, ApprovalHandler, ApprovalRequest, ConsecutiveFailureRecovery, Content,
+    LlmClient, Middleware, OpenAiClient, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx, ReasoningConfig,
+    ReasoningEffort, RunOutcome, RuntimeEvent, SafetyConfig, SessionId, Tool, ToolContext, ToolMetadata, ToolPolicy,
+    TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
 };
 pub use agent_works::AgentBuilder;
 
