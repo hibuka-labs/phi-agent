@@ -32,19 +32,19 @@ Generic agents are everywhere, but the real work — your work — needs an agen
 
     ---
 
-    A tool is four methods: `name()`, `description()`, `schema()`, `call()`. Compiles to a single binary — instant startup, no wasted memory. From cloud servers to edge devices, wherever Rust compiles, it runs.
-
--   :material-target:{ .lg .middle } **Your domain, your rules**
-
-    ---
-
-    Generic agents know a little about everything — except your business. And you can't change them. No black box. No compromise. No “wait for the next release.” Your experience becomes the prompt, your business becomes the tools — your agent grows out of your domain.
+    A tool is four methods you implement: `name()`, `description()`, `schema()`, `call()`. Compiles to a single binary — instant startup, no wasted memory. Rust's built-in safety checks mean fewer crashes and leaks. From cloud servers to edge devices, wherever Rust compiles, it runs.
 
 -   :material-chart-line:{ .lg .middle } **Every step, on the record**
 
     ---
 
     Every LLM call is logged. Every tool execution leaves a trace. Sessions can be snapshotted, behavior replayed, incidents pinpointed — you build it, you see it.
+
+-   :material-target:{ .lg .middle } **Your domain, your rules**
+
+    ---
+
+    Generic agents know a little about everything — except your business. And you can't change them. No black box. No compromise. No “wait for the next release.” Your experience becomes the prompt, your business becomes the tools — your agent grows out of your domain.
 
 </div>
 

@@ -62,14 +62,20 @@ phi serve --transport http --port 8080
 The server exposes a single `run` tool:
 
 ```mermaid
-graph TD
-    EXT["External Orchestrator"]
-    PHI["phi-agent<br/>Rust Runtime"]
+sequenceDiagram
+    participant E as External Orchestrator
+    participant P as phi-agent (MCP Server)
 
-    EXT -->|"MCP tools/list → ['run']"| PHI
-    EXT -->|"MCP tools/call run { prompt }"| PHI
-    PHI -->|"Tool calls, reasoning, multi-step execution<br/>Progress notifications via MCP progress"| EXT
-    PHI -->|"Result"| EXT
+    E->>P: tools/list
+    P-->>E: ["run"]
+    E->>P: tools/call run { prompt }
+    activate P
+    Note over P: Reasoning, tool calls, multi-step execution...
+    P-->>E: progress notification: thinking
+    P-->>E: progress notification: calling {name}
+    P-->>E: progress notification: {name} completed
+    P-->>E: Final result
+    deactivate P
 ```
 
 This design follows the same pattern as Claude Code's `claude_code()` function and Codex — expose the agent, not individual tools.
