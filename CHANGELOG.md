@@ -5,6 +5,20 @@ All notable changes to phi-agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-08-14
+
+### Changed
+- **Migrate to agent-base 0.2.0 Tool API** (breaking): tools now implement `description()` + `schema()` instead of `definition()`; tool results are `Vec<Content>` instead of `ToolOutput`; `ToolControlFlow` is replaced by `Content`.
+- **Sub-agent events render via `agent_id`** (breaking): `SubAgentEvent` is removed — sub-agent streaming events reuse the parent event type, keyed by `agent_id`.
+- Bump dependencies to their 0.2.0 releases: `agent-base`, `agent-works`, `phi-kernel-tools`, `phi-tools`, `phi-telemetry`.
+
+### Added
+- `denied` flag surfaced in `tool_call_finished` JSON output.
+- Coverage backfill for factory/server/prompt, plus an `llvm-cov` CI gate.
+
+### Removed
+- `ToolControlFlow` / `ToolOutput` re-exports (superseded by `Content`).
+
 ## [0.10.1] - 2026-08-13
 
 ### Added
