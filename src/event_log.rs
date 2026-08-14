@@ -144,6 +144,7 @@ mod tests {
             summary: "done".into(),
             agent_id: None,
             trace_id: None,
+            denied: false,
         });
         assert_eq!(v["type"], "tool_call_finished");
         assert_eq!(v["summary"], "done");
@@ -217,6 +218,7 @@ mod tests {
                 summary: "s".into(),
                 agent_id: None,
                 trace_id: None,
+                denied: false,
             },
             RuntimeEvent::RunFinished { session_id: session_id(), agent_id: None, trace_id: None },
             RuntimeEvent::RunCancelled { session_id: session_id(), agent_id: None, trace_id: None },

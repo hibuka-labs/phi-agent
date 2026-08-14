@@ -40,6 +40,7 @@ fn main() -> anyhow::Result<()> {
             summary: "Listed 3 files".into(),
             agent_id: None,
             trace_id: None,
+            denied: false,
         },
         phi_agent::RuntimeEvent::TextDelta {
             session_id: session_id.clone(),

@@ -30,6 +30,7 @@ fn make_tool_finish_event(sid: &SessionId) -> RuntimeEvent {
         summary: format!("Read {} bytes", "fn main() {}\n".repeat(20).len()),
         agent_id: None,
         trace_id: None,
+        denied: false,
     }
 }
 
@@ -84,6 +85,7 @@ fn bench_jsonl_bulk(c: &mut Criterion) {
                     summary: format!("Found results for query {}", i),
                     agent_id: None,
                     trace_id: None,
+                    denied: false,
                 },
             ]
         })

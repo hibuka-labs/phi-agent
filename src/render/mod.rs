@@ -208,7 +208,8 @@ mod tests {
                 tool_name: "test_tool".into(),
                 summary: "done".into(),
                 agent_id: None,
-                trace_id: None
+                trace_id: None,
+                denied: false,
             })
             .is_ok()
         );

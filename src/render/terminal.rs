@@ -371,6 +371,7 @@ mod tests {
                 summary: "file contents here".into(),
                 agent_id: None,
                 trace_id: None,
+                denied: false,
             },
         );
         assert!(out.contains("file contents here"));
@@ -389,6 +390,7 @@ mod tests {
                 summary: long.clone(),
                 agent_id: None,
                 trace_id: None,
+                denied: false,
             },
         );
         assert!(!out.contains(&long));
