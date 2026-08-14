@@ -10,9 +10,9 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "agent-base"
-version = "0.1.14"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d892e9c1fec201a9906d4d1f7ae45f227a9d009b1d78e88fbca684a7f5712761"
+checksum = "633b9effaa6ca640d28b863fb7ad5836d9c02f3873e731a88564b214dd489278"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -21,6 +21,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "reqwest",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
@@ -32,9 +33,9 @@ dependencies = [
 
 [[package]]
 name = "agent-works"
-version = "0.1.7"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bca58a131837f140bb6e2c40322d698b2c26660f8c454e9bac33b345d03598d0"
+checksum = "080c24976cc33f3ef6cd72eb9b2cc817d3ca55f2e9470b89739ef43a7d2d52f6"
 dependencies = [
  "agent-base",
  "async-trait",
@@ -646,6 +647,12 @@ name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
+
+[[package]]
+name = "dyn-clone"
+version = "1.0.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "either"
@@ -1661,7 +1668,7 @@ dependencies = [
 
 [[package]]
 name = "phi-agent"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -1692,13 +1699,14 @@ dependencies = [
 
 [[package]]
 name = "phi-kernel-tools"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b194c3566580c8341452d7744fb8537dbb569866a7a97804160ac244f62b33a3"
+checksum = "f8a5becb294738220d2131ae11a113ddb82b0b79c64b8bde5895cc203994fcff"
 dependencies = [
  "agent-base",
  "agent-works",
  "async-trait",
+ "schemars",
  "serde",
  "serde_json",
  "tokio",
@@ -1708,9 +1716,9 @@ dependencies = [
 
 [[package]]
 name = "phi-telemetry"
-version = "0.1.5"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbc9738e7a440d1c08c57b06c50d48299f9e76171da161185826b2e73e413c2d"
+checksum = "e2a797d4972d609702eb4ff34b70889102fbc68dded8359cf5c3686d93cdc0ce"
 dependencies = [
  "agent-base",
  "anyhow",
@@ -1723,9 +1731,9 @@ dependencies = [
 
 [[package]]
 name = "phi-tools"
-version = "0.1.5"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ceda5dd9d5f356ff96d1b8e6db5714bc9b2e9a7c1da3c6e074af01c12ff0619"
+checksum = "1ab20cb096b48a7cb3dcf1b9728c28d6e1c30da6fd0f8f68077f8334228d3099"
 dependencies = [
  "agent-base",
  "anyhow",
@@ -2007,6 +2015,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ref-cast"
+version = "1.0.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "216e8f773d7923bcba9ceb86a86c93cabb3903a11872fc3f138c49630e50b96d"
+dependencies = [
+ "ref-cast-impl",
+]
+
+[[package]]
+name = "ref-cast-impl"
+version = "1.0.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c9283685feec7d69af75fb0e858d5e7378f33fe4fc699383b2916ab9273e03c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
+]
+
+[[package]]
 name = "regex"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2250,6 +2278,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "schemars"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "687274d293b6cdc6e73e0fee520bf2049650090d7164f87672d212a3c530cf4a"
+dependencies = [
+ "dyn-clone",
+ "ref-cast",
+ "schemars_derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "schemars_derive"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d98c67716b46af2f0b8cf752abc930f6f9aecfbf671ecfb531db8a31dbe4e2ba"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde_derive_internals",
+ "syn 3.0.3",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2308,6 +2361,17 @@ name = "serde_derive"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
+]
+
+[[package]]
+name = "serde_derive_internals"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f852137cce035d6a4df67ccce505ff6b3e9fd3a10e3e52b24dc71e650bb1a9bd"
 dependencies = [
  "proc-macro2",
  "quote",
