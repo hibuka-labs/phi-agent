@@ -71,13 +71,14 @@ impl EventRenderer for JsonStreamRenderer {
                     }),
                 )?;
             },
-            RuntimeEvent::ToolCallFinished { tool_name, summary, .. } => {
+            RuntimeEvent::ToolCallFinished { tool_name, summary, denied, .. } => {
                 self.emit_event(
                     &event,
                     json!({
                         "type": "tool_call_finished",
                         "tool": tool_name,
                         "summary": summary,
+                        "denied": denied,
                     }),
                 )?;
             },
@@ -249,6 +250,7 @@ mod tests {
         assert_eq!(v["type"], "tool_call_finished");
         assert_eq!(v["tool"], "shell");
         assert_eq!(v["summary"], "done");
+        assert_eq!(v["denied"], false);
     }
 
     #[test]

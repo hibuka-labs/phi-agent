@@ -58,8 +58,8 @@ pub fn event_to_value(event: &RuntimeEvent) -> serde_json::Value {
             let args: serde_json::Value = serde_json::from_str(args_json).unwrap_or(serde_json::Value::Null);
             serde_json::json!({"type": "tool_call_started", "tool": tool_name, "args": args})
         },
-        RuntimeEvent::ToolCallFinished { tool_name, summary, .. } => {
-            serde_json::json!({"type": "tool_call_finished", "tool": tool_name, "summary": summary})
+        RuntimeEvent::ToolCallFinished { tool_name, summary, denied, .. } => {
+            serde_json::json!({"type": "tool_call_finished", "tool": tool_name, "summary": summary, "denied": denied})
         },
         RuntimeEvent::AwaitingApproval { request, .. } => {
             serde_json::json!({"type": "approval_request", "title": request.title, "message": request.message})
@@ -148,6 +148,7 @@ mod tests {
         });
         assert_eq!(v["type"], "tool_call_finished");
         assert_eq!(v["summary"], "done");
+        assert_eq!(v["denied"], false);
     }
 
     #[test]
