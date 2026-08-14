@@ -65,57 +65,6 @@ impl TerminalRenderer {
         if self.color { format!("\x1b[90m{}\x1b[0m", s) } else { s.to_string() }
     }
 
-    fn render_subagent_event(&mut self, subagent: &str, event: &RuntimeEvent) -> AgentResult<()> {
-        let prefix = self.subtle(&format!("[{}]", subagent));
-        match event {
-            RuntimeEvent::ThoughtDelta { text, .. } => {
-                if self.show_thinking {
-                    self.write_text(&format!("{} {}", prefix, self.dim(text)))?;
-                }
-                self.last_was_thought = true;
-            },
-            RuntimeEvent::TextDelta { text, .. } => {
-                if self.last_was_thought {
-                    let _ = writeln!(self.writer);
-                    self.last_was_thought = false;
-                }
-                self.last_assistant_text.push_str(text);
-                self.write_text(&format!("{} {}", prefix, text))?;
-            },
-            RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => {
-                self.last_was_thought = false;
-                self.tool_call_count += 1;
-                if self.show_tool_args {
-                    self.write_line(&format!(
-                        "{} {} {} {}",
-                        prefix,
-                        self.bold("\u{1F527}"),
-                        self.green(tool_name),
-                        self.dim(args_json),
-                    ))?;
-                } else {
-                    self.write_line(&format!("{} {} {}", prefix, self.bold("\u{1F527}"), self.green(tool_name),))?;
-                }
-            },
-            RuntimeEvent::ToolCallFinished { tool_name: _, summary, .. } => {
-                let summary_short: String = if summary.chars().count() > 500 {
-                    let truncated: String = summary.chars().take(500).collect();
-                    format!("{}...", truncated)
-                } else {
-                    summary.clone()
-                };
-                self.write_line(&format!("{}   {} {}", prefix, self.dim("→"), self.dim(&summary_short)))?;
-                let _ = writeln!(self.writer);
-            },
-            RuntimeEvent::RunCancelled { .. } => {
-                self.write_line(&format!("{} {} Cancelled", prefix, self.yellow("⚠")))?;
-            },
-            RuntimeEvent::RunFinished { .. } => {},
-            _ => {},
-        }
-        Ok(())
-    }
-
     fn write_line(&mut self, s: &str) -> AgentResult<()> {
         writeln!(self.writer, "{}", s).map_err(|e| agent_base::AgentError::internal(format!("write error: {e}")))?;
         self.writer.flush().map_err(|e| agent_base::AgentError::internal(format!("flush error: {e}")))?;
@@ -136,10 +85,18 @@ impl EventRenderer for TerminalRenderer {
             self.turn_start = Some(std::time::Instant::now());
         }
 
+        // Sub-agent events (agent_id set) get a `[path]` prefix and must not
+        // pollute the parent's assistant-text buffer.
+        let agent_prefix = event.agent_id().map(|id| self.subtle(&format!("[{}]", id)));
+        let is_subagent = agent_prefix.is_some();
+
         match &event {
             RuntimeEvent::ThoughtDelta { text, .. } => {
                 if self.show_thinking {
-                    self.write_text(&self.dim(text))?;
+                    match &agent_prefix {
+                        Some(prefix) => self.write_text(&format!("{} {}", prefix, self.dim(text)))?,
+                        None => self.write_text(&self.dim(text))?,
+                    }
                 }
                 self.last_was_thought = true;
             },
@@ -148,21 +105,25 @@ impl EventRenderer for TerminalRenderer {
                     let _ = writeln!(self.writer);
                     self.last_was_thought = false;
                 }
-                self.last_assistant_text.push_str(text);
-                self.write_text(text)?;
+                if !is_subagent {
+                    self.last_assistant_text.push_str(text);
+                }
+                match &agent_prefix {
+                    Some(prefix) => self.write_text(&format!("{} {}", prefix, text))?,
+                    None => self.write_text(text)?,
+                }
             },
             RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => {
                 self.last_was_thought = false;
                 self.tool_call_count += 1;
+                let head = match &agent_prefix {
+                    Some(prefix) => format!("{} {}", prefix, self.bold("\u{1F527}")),
+                    None => self.bold("\u{1F527}"),
+                };
                 if self.show_tool_args {
-                    self.write_line(&format!(
-                        "\n{} {} {}",
-                        self.bold("\u{1F527}"),
-                        self.green(tool_name),
-                        self.dim(args_json),
-                    ))?;
+                    self.write_line(&format!("\n{} {} {}", head, self.green(tool_name), self.dim(args_json)))?;
                 } else {
-                    self.write_line(&format!("\n{} {}", self.bold("\u{1F527}"), self.green(tool_name),))?;
+                    self.write_line(&format!("\n{} {}", head, self.green(tool_name)))?;
                 }
             },
             RuntimeEvent::ToolCallFinished { tool_name: _, summary, .. } => {
@@ -172,7 +133,12 @@ impl EventRenderer for TerminalRenderer {
                 } else {
                     summary.clone()
                 };
-                self.write_line(&format!("   {} {}", self.dim("→"), self.dim(&summary_short)))?;
+                match &agent_prefix {
+                    Some(prefix) => {
+                        self.write_line(&format!("{}   {} {}", prefix, self.dim("→"), self.dim(&summary_short)))?
+                    },
+                    None => self.write_line(&format!("   {} {}", self.dim("→"), self.dim(&summary_short)))?,
+                }
                 // Add a blank line after tool completion for readability
                 let _ = writeln!(self.writer);
             },
@@ -192,15 +158,12 @@ impl EventRenderer for TerminalRenderer {
                 }
                 let _ = writeln!(self.writer);
             },
-            RuntimeEvent::RunCancelled { .. } => {
-                self.write_line(&format!("\n{} Cancelled", self.yellow("⚠")))?;
+            RuntimeEvent::RunCancelled { .. } => match &agent_prefix {
+                Some(prefix) => self.write_line(&format!("{} {} Cancelled", prefix, self.yellow("⚠")))?,
+                None => self.write_line(&format!("\n{} Cancelled", self.yellow("⚠")))?,
             },
             RuntimeEvent::RunFinished { .. } => {},
-            RuntimeEvent::UserEvent { event, .. } => {
-                if let agent_base::UserEvent::SubAgentEvent { subagent, event: inner } = event {
-                    self.render_subagent_event(subagent, inner)?;
-                }
-            },
+            RuntimeEvent::UserEvent { .. } => {},
             RuntimeEvent::Checkpoint { .. } => {},
         }
 
@@ -621,7 +584,7 @@ mod tests {
         assert!(out.contains("hello"));
     }
 
-    // ── SubAgentEvent tests ──
+    // ── Sub-agent (agent_id) tests ──
 
     #[test]
     fn test_render_subagent_text_delta() {
@@ -629,18 +592,10 @@ mod tests {
             true,
             true,
             false,
-            RuntimeEvent::UserEvent {
+            RuntimeEvent::TextDelta {
                 session_id: session_id(),
-                event: UserEvent::SubAgentEvent {
-                    subagent: "root/searcher".into(),
-                    event: Box::new(RuntimeEvent::TextDelta {
-                        session_id: session_id(),
-                        text: "found results".into(),
-                        agent_id: None,
-                        trace_id: None,
-                    }),
-                },
-                agent_id: None,
+                text: "found results".into(),
+                agent_id: Some("root/searcher".into()),
                 trace_id: None,
             },
         );
@@ -654,19 +609,11 @@ mod tests {
             true,
             true,
             false,
-            RuntimeEvent::UserEvent {
+            RuntimeEvent::ToolCallStarted {
                 session_id: session_id(),
-                event: UserEvent::SubAgentEvent {
-                    subagent: "root/worker".into(),
-                    event: Box::new(RuntimeEvent::ToolCallStarted {
-                        session_id: session_id(),
-                        tool_name: "search".into(),
-                        args_json: r#"{"q":"test"}"#.into(),
-                        agent_id: None,
-                        trace_id: None,
-                    }),
-                },
-                agent_id: None,
+                tool_name: "search".into(),
+                args_json: r#"{"q":"test"}"#.into(),
+                agent_id: Some("root/worker".into()),
                 trace_id: None,
             },
         );
@@ -681,18 +628,10 @@ mod tests {
             false,
             true,
             false,
-            RuntimeEvent::UserEvent {
+            RuntimeEvent::ThoughtDelta {
                 session_id: session_id(),
-                event: UserEvent::SubAgentEvent {
-                    subagent: "root/thinker".into(),
-                    event: Box::new(RuntimeEvent::ThoughtDelta {
-                        session_id: session_id(),
-                        text: "secret plan".into(),
-                        agent_id: None,
-                        trace_id: None,
-                    }),
-                },
-                agent_id: None,
+                text: "secret plan".into(),
+                agent_id: Some("root/thinker".into()),
                 trace_id: None,
             },
         );
@@ -705,17 +644,9 @@ mod tests {
             true,
             true,
             false,
-            RuntimeEvent::UserEvent {
+            RuntimeEvent::RunCancelled {
                 session_id: session_id(),
-                event: UserEvent::SubAgentEvent {
-                    subagent: "root/worker".into(),
-                    event: Box::new(RuntimeEvent::RunCancelled {
-                        session_id: session_id(),
-                        agent_id: None,
-                        trace_id: None,
-                    }),
-                },
-                agent_id: None,
+                agent_id: Some("root/worker".into()),
                 trace_id: None,
             },
         );

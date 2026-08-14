@@ -33,6 +33,14 @@ impl JsonStreamRenderer {
         writeln!(self.writer, "{}", line).map_err(|e| agent_base::AgentError::internal(format!("write error: {e}")))?;
         Ok(())
     }
+
+    /// Emit an event line, attaching `agent_id` when the event carries one.
+    fn emit_event(&mut self, event: &RuntimeEvent, mut value: Value) -> AgentResult<()> {
+        if let Some(agent_id) = event.agent_id() {
+            value["agent_id"] = json!(agent_id);
+        }
+        self.emit(&value)
+    }
 }
 
 impl EventRenderer for JsonStreamRenderer {
@@ -43,64 +51,72 @@ impl EventRenderer for JsonStreamRenderer {
 
         match &event {
             RuntimeEvent::ThoughtDelta { text, .. } => {
-                self.emit(&json!({ "type": "thought_delta", "text": text }))?;
+                self.emit_event(&event, json!({ "type": "thought_delta", "text": text }))?;
             },
             RuntimeEvent::TextDelta { text, .. } => {
-                self.last_assistant_text.push_str(text);
-                self.emit(&json!({ "type": "text_delta", "text": text }))?;
+                if event.agent_id().is_none() {
+                    self.last_assistant_text.push_str(text);
+                }
+                self.emit_event(&event, json!({ "type": "text_delta", "text": text }))?;
             },
             RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => {
                 self.tool_call_count += 1;
                 let args: Value = serde_json::from_str(args_json).unwrap_or(Value::Null);
-                self.emit(&json!({
-                    "type": "tool_call_started",
-                    "tool": tool_name,
-                    "args": args,
-                }))?;
+                self.emit_event(
+                    &event,
+                    json!({
+                        "type": "tool_call_started",
+                        "tool": tool_name,
+                        "args": args,
+                    }),
+                )?;
             },
             RuntimeEvent::ToolCallFinished { tool_name, summary, .. } => {
-                self.emit(&json!({
-                    "type": "tool_call_finished",
-                    "tool": tool_name,
-                    "summary": summary,
-                }))?;
+                self.emit_event(
+                    &event,
+                    json!({
+                        "type": "tool_call_finished",
+                        "tool": tool_name,
+                        "summary": summary,
+                    }),
+                )?;
             },
             RuntimeEvent::AwaitingApproval { request, .. } => {
-                self.emit(&json!({
-                    "type": "approval_request",
-                    "title": request.title,
-                    "risk": format!("{:?}", request.risk_level),
-                    "message": request.message,
-                }))?;
+                self.emit_event(
+                    &event,
+                    json!({
+                        "type": "approval_request",
+                        "title": request.title,
+                        "risk": format!("{:?}", request.risk_level),
+                        "message": request.message,
+                    }),
+                )?;
             },
             RuntimeEvent::PlanUpdated { explanation, plan, .. } => {
-                self.emit(&json!({
-                    "type": "plan_updated",
-                    "explanation": explanation,
-                    "plan": plan,
-                }))?;
+                self.emit_event(
+                    &event,
+                    json!({
+                        "type": "plan_updated",
+                        "explanation": explanation,
+                        "plan": plan,
+                    }),
+                )?;
             },
             RuntimeEvent::UserEvent { event: UserEvent::Structured { event_type, data }, .. } => {
-                self.emit(&json!({
-                    "type": "user_event",
-                    "event_type": event_type,
-                    "data": data,
-                }))?;
-            },
-            RuntimeEvent::UserEvent { event: UserEvent::SubAgentEvent { subagent, event: inner }, .. } => {
-                use crate::event_log::event_to_value;
-                let inner_value = event_to_value(inner);
-                self.emit(&json!({
-                    "type": "subagent_event",
-                    "subagent": subagent,
-                    "event": inner_value,
-                }))?;
+                self.emit_event(
+                    &event,
+                    json!({
+                        "type": "user_event",
+                        "event_type": event_type,
+                        "data": data,
+                    }),
+                )?;
             },
             RuntimeEvent::UserEvent { .. } => {},
             RuntimeEvent::Checkpoint { .. } => {},
             RuntimeEvent::RunFinished { .. } => {},
             RuntimeEvent::RunCancelled { .. } => {
-                self.emit(&json!({ "type": "run_cancelled" }))?;
+                self.emit_event(&event, json!({ "type": "run_cancelled" }))?;
             },
         }
 
@@ -351,53 +367,62 @@ mod tests {
         assert_eq!(last["assistant_text"], "Hello World");
     }
 
-    // ── SubAgentEvent tests ──
+    // ── Sub-agent (agent_id) tests ──
 
     #[test]
-    fn test_subagent_event_produces_structured_json() {
-        let lines = render_one(RuntimeEvent::UserEvent {
+    fn test_subagent_text_delta_includes_agent_id() {
+        let lines = render_one(RuntimeEvent::TextDelta {
             session_id: session_id(),
-            event: UserEvent::SubAgentEvent {
-                subagent: "root/searcher".into(),
-                event: Box::new(RuntimeEvent::TextDelta {
-                    session_id: session_id(),
-                    text: "found 3 items".into(),
-                    agent_id: None,
-                    trace_id: None,
-                }),
-            },
-            agent_id: None,
+            text: "found 3 items".into(),
+            agent_id: Some("root/searcher".into()),
             trace_id: None,
         });
         assert_eq!(lines.len(), 1);
         let v: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
-        assert_eq!(v["type"], "subagent_event");
-        assert_eq!(v["subagent"], "root/searcher");
-        assert_eq!(v["event"]["type"], "text_delta");
-        assert_eq!(v["event"]["text"], "found 3 items");
+        assert_eq!(v["type"], "text_delta");
+        assert_eq!(v["text"], "found 3 items");
+        assert_eq!(v["agent_id"], "root/searcher");
     }
 
     #[test]
-    fn test_subagent_event_with_tool_call() {
-        let lines = render_one(RuntimeEvent::UserEvent {
+    fn test_subagent_tool_call_includes_agent_id() {
+        let lines = render_one(RuntimeEvent::ToolCallStarted {
             session_id: session_id(),
-            event: UserEvent::SubAgentEvent {
-                subagent: "root/worker".into(),
-                event: Box::new(RuntimeEvent::ToolCallStarted {
-                    session_id: session_id(),
-                    tool_name: "shell".into(),
-                    args_json: r#"{"cmd":"ls"}"#.into(),
-                    agent_id: None,
-                    trace_id: None,
-                }),
-            },
+            tool_name: "shell".into(),
+            args_json: r#"{"cmd":"ls"}"#.into(),
+            agent_id: Some("root/worker".into()),
+            trace_id: None,
+        });
+        let v: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
+        assert_eq!(v["type"], "tool_call_started");
+        assert_eq!(v["tool"], "shell");
+        assert_eq!(v["agent_id"], "root/worker");
+    }
+
+    #[test]
+    fn test_root_event_omits_agent_id() {
+        let lines = render_one(RuntimeEvent::TextDelta {
+            session_id: session_id(),
+            text: "hello".into(),
             agent_id: None,
             trace_id: None,
         });
         let v: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
-        assert_eq!(v["type"], "subagent_event");
-        assert_eq!(v["subagent"], "root/worker");
-        assert_eq!(v["event"]["type"], "tool_call_started");
-        assert_eq!(v["event"]["tool"], "shell");
+        assert!(v.get("agent_id").is_none());
+    }
+
+    #[test]
+    fn test_subagent_text_does_not_pollute_assistant_text() {
+        let lines = render_and_finish(&[
+            RuntimeEvent::TextDelta { session_id: session_id(), text: "root ".into(), agent_id: None, trace_id: None },
+            RuntimeEvent::TextDelta {
+                session_id: session_id(),
+                text: "child".into(),
+                agent_id: Some("root/child".into()),
+                trace_id: None,
+            },
+        ]);
+        let last: serde_json::Value = serde_json::from_str(lines.last().unwrap()).unwrap();
+        assert_eq!(last["assistant_text"], "root");
     }
 }

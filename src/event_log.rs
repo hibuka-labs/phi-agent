@@ -47,7 +47,7 @@ pub fn save_turn_log(
 
 /// Convert a RuntimeEvent to a JSON Value (shared by event_log and render).
 pub fn event_to_value(event: &RuntimeEvent) -> serde_json::Value {
-    match event {
+    let mut value = match event {
         RuntimeEvent::ThoughtDelta { text, .. } => {
             serde_json::json!({"type": "thought_delta", "text": text})
         },
@@ -70,15 +70,15 @@ pub fn event_to_value(event: &RuntimeEvent) -> serde_json::Value {
         RuntimeEvent::UserEvent { event: UserEvent::Structured { event_type, data }, .. } => {
             serde_json::json!({"type": "user_event", "event_type": event_type, "data": data})
         },
-        RuntimeEvent::UserEvent { event: UserEvent::SubAgentEvent { subagent, event: inner }, .. } => {
-            let inner = event_to_value(inner);
-            serde_json::json!({"type": "subagent_event", "subagent": subagent, "event": inner})
-        },
         RuntimeEvent::UserEvent { .. } => serde_json::json!({"type": "other"}),
         RuntimeEvent::RunCancelled { .. } => serde_json::json!({"type": "run_cancelled"}),
         RuntimeEvent::RunFinished { .. } => serde_json::json!({"type": "run_finished"}),
         RuntimeEvent::Checkpoint { .. } => serde_json::json!({"type": "checkpoint"}),
+    };
+    if let Some(agent_id) = event.agent_id() {
+        value["agent_id"] = serde_json::json!(agent_id);
     }
+    value
 }
 
 /// Convert a RuntimeEvent to a JSONL line.
@@ -352,59 +352,30 @@ mod tests {
         assert_eq!(last["turn"], 1);
     }
 
-    // ── SubAgentEvent tests ──
+    // ── agent_id serialization tests ──
 
     #[test]
-    fn test_event_to_value_subagent_event() {
-        let v = event_to_value(&RuntimeEvent::UserEvent {
+    fn test_event_to_value_attaches_agent_id() {
+        let v = event_to_value(&RuntimeEvent::TextDelta {
             session_id: session_id(),
-            event: UserEvent::SubAgentEvent {
-                subagent: "root/searcher".into(),
-                event: Box::new(RuntimeEvent::TextDelta {
-                    session_id: session_id(),
-                    text: "result".into(),
-                    agent_id: None,
-                    trace_id: None,
-                }),
-            },
-            agent_id: None,
+            text: "result".into(),
+            agent_id: Some("root/searcher".into()),
             trace_id: None,
         });
-        assert_eq!(v["type"], "subagent_event");
-        assert_eq!(v["subagent"], "root/searcher");
-        assert_eq!(v["event"]["type"], "text_delta");
-        assert_eq!(v["event"]["text"], "result");
+        assert_eq!(v["type"], "text_delta");
+        assert_eq!(v["text"], "result");
+        assert_eq!(v["agent_id"], "root/searcher");
     }
 
     #[test]
-    fn test_event_to_value_nested_subagent_event() {
-        // Subagent event wrapping another subagent event (nested)
-        let v = event_to_value(&RuntimeEvent::UserEvent {
+    fn test_event_to_value_omits_agent_id_when_none() {
+        let v = event_to_value(&RuntimeEvent::TextDelta {
             session_id: session_id(),
-            event: UserEvent::SubAgentEvent {
-                subagent: "root/parent".into(),
-                event: Box::new(RuntimeEvent::UserEvent {
-                    session_id: session_id(),
-                    event: UserEvent::SubAgentEvent {
-                        subagent: "root/parent/child".into(),
-                        event: Box::new(RuntimeEvent::TextDelta {
-                            session_id: session_id(),
-                            text: "deep".into(),
-                            agent_id: None,
-                            trace_id: None,
-                        }),
-                    },
-                    agent_id: None,
-                    trace_id: None,
-                }),
-            },
+            text: "result".into(),
             agent_id: None,
             trace_id: None,
         });
-        assert_eq!(v["type"], "subagent_event");
-        assert_eq!(v["subagent"], "root/parent");
-        assert_eq!(v["event"]["type"], "subagent_event");
-        assert_eq!(v["event"]["subagent"], "root/parent/child");
-        assert_eq!(v["event"]["event"]["text"], "deep");
+        assert_eq!(v["type"], "text_delta");
+        assert!(v.get("agent_id").is_none());
     }
 }
