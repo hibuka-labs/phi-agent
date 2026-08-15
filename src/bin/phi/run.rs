@@ -105,7 +105,10 @@ pub async fn run_repl(
     };
 
     let mut agent_session_id = agent_session_id.clone();
-    let mut turn_number: u32 = 0;
+    // Resume turn numbering from any turns already logged for this session, so
+    // reusing a session across runs continues the sequence instead of appending
+    // a later run's `turn_001.jsonl` into an earlier one.
+    let mut turn_number: u32 = session_ctx.last_turn_number();
 
     let mut rl = rustyline::Editor::<(), rustyline::history::FileHistory>::new()?;
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
@@ -136,7 +139,7 @@ pub async fn run_repl(
         }
         if input == "reset" {
             agent_session_id = agent.create_session().await;
-            turn_number = 0;
+            turn_number = session_ctx.last_turn_number();
             tracing::info!(new_session_id = %agent_session_id.id, "session reset");
             if matches!(format, OutputFormat::Terminal { .. }) {
                 println!("\n✅ New session created");

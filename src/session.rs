@@ -46,6 +46,32 @@ impl SessionContext {
     pub fn turn_path(&self, turn: usize) -> PathBuf {
         self.session_dir.join(format!("turn_{:03}.jsonl", turn))
     }
+
+    /// Highest turn number already logged for this session (0 if none).
+    ///
+    /// Scans `session_dir` for `turn_NNN.jsonl` files and returns the max `N`.
+    /// Consumers that persist per-turn logs should initialize their turn
+    /// counter from this value (then increment) so that reusing a session id
+    /// across process runs *continues* the turn sequence instead of resetting
+    /// to 1 and appending a later run's `turn_001.jsonl` into an earlier one.
+    pub fn last_turn_number(&self) -> u32 {
+        let Ok(rd) = std::fs::read_dir(&self.session_dir) else {
+            return 0;
+        };
+        let mut max = 0u32;
+        for entry in rd.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if let Some(n) = name
+                .strip_prefix("turn_")
+                .and_then(|s| s.strip_suffix(".jsonl"))
+                .and_then(|s| s.parse::<u32>().ok())
+            {
+                max = max.max(n);
+            }
+        }
+        max
+    }
 }
 
 /// Validate session ID format.
@@ -445,6 +471,23 @@ mod tests {
         assert!(ctx.metadata_path().exists());
         assert_eq!(ctx.log_path(), ctx.session_dir.join("session.log"));
         assert_eq!(ctx.turn_path(1), ctx.session_dir.join("turn_001.jsonl"));
+    }
+
+    #[test]
+    fn test_last_turn_number_scans_existing_turns() {
+        let tmp = TempDir::new().unwrap();
+        let ctx = resolve_session(Some("turn-scan"), tmp.path()).unwrap();
+        assert_eq!(ctx.last_turn_number(), 0, "empty session should start at 0");
+
+        std::fs::write(ctx.turn_path(1), "").unwrap();
+        std::fs::write(ctx.turn_path(3), "").unwrap();
+        assert_eq!(ctx.last_turn_number(), 3);
+
+        // Non-turn files (and malformed turn names) are ignored.
+        std::fs::write(ctx.session_dir.join("session.log"), "").unwrap();
+        std::fs::write(ctx.session_dir.join("turn_abc.jsonl"), "").unwrap();
+        std::fs::write(ctx.session_dir.join("turn_004.jsonl"), "").unwrap();
+        assert_eq!(ctx.last_turn_number(), 4);
     }
 
     #[test]

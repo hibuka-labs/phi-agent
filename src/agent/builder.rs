@@ -39,9 +39,23 @@ use crate::agent::compression::SummarizingMiddleware;
 /// - `full`: file + shell + mcp + telemetry + logging (excludes browser and multi-agent)
 #[allow(unused_mut)]
 pub fn base_agent_builder(llm_client: Arc<dyn agent_base::StreamClient>) -> agent_works::AgentBuilder {
+    base_agent_builder_with_excludes(llm_client, Vec::new())
+}
+
+/// Like [`base_agent_builder`], but lets the consumer inject a list of entry
+/// names for [`ListFilesTool`] to skip (e.g. a coding agent passing
+/// `["target", "node_modules"]`). The framework stays domain-agnostic: it
+/// defaults to no excludes; the consumer decides what counts as noise.
+#[allow(unused_mut)]
+pub fn base_agent_builder_with_excludes(
+    llm_client: Arc<dyn agent_base::StreamClient>,
+    file_excludes: Vec<String>,
+) -> agent_works::AgentBuilder {
     // Tool-output cap (default 4000 chars). Tune via PHI_MAX_TOOL_OUTPUT_CHARS for large
-    // outputs (HTML, base64 images, long lists). Truncated results carry an explicit
-    // "...(truncated)" suffix plus structured TruncationInfo from agent-base.
+    // outputs (HTML, base64 images, long lists). The engine REJECTS output that exceeds
+    // this cap (design §6.5) rather than silently truncating. Tools that can bound
+    // themselves — e.g. read_file — self-truncate to the per-call budget exposed via
+    // `ToolContext::max_output_chars` and emit a "...(truncated)" continuation hint.
     let max_tool_output_chars = match std::env::var("PHI_MAX_TOOL_OUTPUT_CHARS") {
         Ok(value) => match value.trim().parse::<usize>() {
             Ok(n) => n,
@@ -83,7 +97,7 @@ pub fn base_agent_builder(llm_client: Arc<dyn agent_base::StreamClient>) -> agen
             .register_tool_arc(Arc::new(ReadFileTool::new(cwd.clone())))
             .register_tool_arc(Arc::new(WriteFileTool::new(cwd.clone())))
             .register_tool_arc(Arc::new(EditFileTool::new(cwd.clone())))
-            .register_tool_arc(Arc::new(ListFilesTool::new(cwd.clone())));
+            .register_tool_arc(Arc::new(ListFilesTool::with_excludes(cwd.clone(), file_excludes)));
     }
 
     // ── Multi-agent (opt-in) ──
