@@ -326,6 +326,26 @@ async fn test_base_agent_builder_registers_file_tools() {
     assert!(names.contains(&"list_files"), "list_files tool should be registered");
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_base_agent_builder_registers_update_plan() {
+    let client = agent_base::llm::adapt(Arc::new(SimpleMockLlmClient));
+    let builder = base_agent_builder(client).system_prompt("test");
+
+    let config = PhiAgentConfig {
+        model: "test-model".into(),
+        enable_thinking: false,
+        thinking_budget: None,
+        thinking_effort: ReasoningEffort::Medium,
+        safety: SafetyConfig::default(),
+        max_turns: Some(10),
+    };
+    let agent = phi_agent::PhiAgent::build(builder, config).expect("build agent");
+    let tools = agent.list_tools().await;
+
+    let names: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
+    assert!(names.contains(&"update_plan"), "update_plan should be registered by the base builder");
+}
+
 // ── Phase 5: Skills in prompt-injection mode (no skill-specific tools) ──
 
 #[tokio::test(flavor = "multi_thread")]

@@ -153,25 +153,6 @@ async fn main() -> Result<()> {
     #[allow(unused_mut)]
     let mut builder = base_agent_builder(llm_client)
         .system_prompt(system_prompt)
-        .register_tool(
-            phi_agent::UpdatePlanTool::new().with_description(
-                "Create or update a task plan to show the user a checklist with progress. \
-                This is a presentation protocol.\n\n\
-                [When to Use]\n\
-                - Complex tasks (usually 3+ steps): call update_plan first to show the plan, \
-                  then execute step by step.\n\
-                - Simple tasks, Q&A, one-shot operations: do NOT call — handle directly.\n\n\
-                [Requirements]\n\
-                - Must provide an objective when creating a plan for the first time.\n\
-                - plan is a full snapshot, not an incremental patch.\n\
-                - At most one step can be in_progress at a time.\n\
-                - Step text should be human-readable task descriptions only.\n\n\
-                [Update Conventions]\n\
-                - Update status promptly as you progress: pending → in_progress → completed.\n\
-                - If blocked, explain the reason honestly in the explanation field."
-                    .to_string(),
-            ),
-        )
         .approval_handler(approval_handler)
         .middleware(TurnFactMiddleware::new())
         .middleware(TurnToolLimitMiddleware::from_config(&safety_config))

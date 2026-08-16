@@ -8,7 +8,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use agent_base::{ConsecutiveFailureRecovery, Language, ReasoningConfig, ReasoningEffort};
+use agent_base::{
+    ConsecutiveFailureRecovery, Language, ReasoningConfig, ReasoningEffort, UpdatePlanTool,
+};
 
 use crate::agent::compression::SummarizingMiddleware;
 
@@ -21,6 +23,7 @@ use crate::agent::compression::SummarizingMiddleware;
 /// - Per-run react-loop cap (200 iterations for one user input)
 /// - LLM-based context compression for long tool-heavy conversations
 /// - File tools (read_file / write_file / edit_file / list_files) — enabled by default
+/// - Plan checklist (update_plan) — display-only progress tracking, enabled by default
 /// - Skills injected into system prompt (not as tools — LLM uses read_file;
 ///   enabled by default via `file` feature)
 /// - MCP protocol support — enabled by default
@@ -99,6 +102,12 @@ pub fn base_agent_builder_with_excludes(
             .register_tool_arc(Arc::new(EditFileTool::new(cwd.clone())))
             .register_tool_arc(Arc::new(ListFilesTool::with_excludes(cwd.clone(), file_excludes)));
     }
+
+    // ── Plan checklist (display-only progress tracking) ──
+    // `build_system_prompt` instructs the model to call `update_plan` for complex tasks,
+    // so the base builder registers it unconditionally — otherwise the prompt references
+    // a tool the agent doesn't have (the `init`/`serve` entry points used to hit this).
+    builder = builder.register_tool_arc(Arc::new(UpdatePlanTool::new()));
 
     // ── Multi-agent (opt-in) ──
     #[cfg(feature = "multi-agent")]
