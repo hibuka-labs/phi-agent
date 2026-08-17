@@ -44,7 +44,7 @@ pub fn base_agent_builder(llm_client: Arc<dyn agent_base::StreamClient>) -> agen
 }
 
 /// Like [`base_agent_builder`], but lets the consumer inject a list of entry
-/// names for [`ListFilesTool`] to skip (e.g. a coding agent passing
+/// names for [`phi_kernel_tools::file::ListFilesTool`] to skip (e.g. a coding agent passing
 /// `["target", "node_modules"]`). The framework stays domain-agnostic: it
 /// defaults to no excludes; the consumer decides what counts as noise.
 #[allow(unused_mut)]
