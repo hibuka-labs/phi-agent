@@ -28,10 +28,10 @@ pub mod session;
 // because phi-agent is a full-stack framework that includes multi-agent, skills, MCP, etc.
 // For the bare runtime builder, use agent_base::AgentBuilder directly.
 pub use agent_base::{
-    AgentError, AgentResult, AgentRuntime, ApprovalDecision, ApprovalHandler, ApprovalRequest, ConsecutiveFailureRecovery, Content,
-    LlmClient, Middleware, OpenAiClient, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx, ReasoningConfig,
-    ReasoningEffort, RiskLevel, RunOutcome, RuntimeEvent, SafetyConfig, SessionId, Tool, ToolContext, ToolMetadata, ToolPolicy,
-    TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
+    AgentError, AgentResult, AgentRuntime, ApprovalDecision, ApprovalHandler, ApprovalRequest,
+    ConsecutiveFailureRecovery, Content, LlmClient, Middleware, OpenAiClient, PlanItem, PlanStepStatus, PostLlmCtx,
+    PreLlmCtx, ReasoningConfig, ReasoningEffort, RiskLevel, RunOutcome, RuntimeEvent, SafetyConfig, SessionId, Tool,
+    ToolContext, ToolMetadata, ToolPolicy, TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
 };
 pub use agent_works::AgentBuilder;
 
@@ -51,7 +51,10 @@ pub use agent_works::multi_agent::{ChildPermissionMode, MultiAgentConfig};
 pub use agent_works::mcp::{McpServeConfig, McpServer, McpServerConfig, McpServerTransport, McpTransport};
 
 // ── phi-agent types ──
-pub use agent::{CompressionConfig, PhiAgent, PhiAgentConfig, SummarizingMiddleware, base_agent_builder, base_agent_builder_with_excludes};
+pub use agent::{
+    CompressionConfig, PhiAgent, PhiAgentConfig, SummarizingMiddleware, base_agent_builder,
+    base_agent_builder_with_excludes,
+};
 pub use cli::{ApprovalMode, AutoApprovalHandler};
 pub use config::{LlmConfig, resolve_llm_config};
 pub use event_log::{event_to_jsonl, event_to_value, save_turn_log};

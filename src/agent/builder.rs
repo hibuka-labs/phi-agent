@@ -8,9 +8,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use agent_base::{
-    ConsecutiveFailureRecovery, Language, ReasoningConfig, ReasoningEffort, UpdatePlanTool,
-};
+use agent_base::{ConsecutiveFailureRecovery, Language, ReasoningConfig, ReasoningEffort, UpdatePlanTool};
 
 use crate::agent::compression::SummarizingMiddleware;
 

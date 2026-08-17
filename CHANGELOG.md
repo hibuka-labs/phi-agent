@@ -5,6 +5,18 @@ All notable changes to phi-agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2026-08-17
+
+### Added
+- `base_agent_builder_with_excludes()` — builder variant that skips specific kernel tools (e.g. when an app re-registers its own `update_plan`).
+- `update_plan` tool is default-registered in `base_agent_builder()`.
+- Session turn-number resume for continued conversations.
+- Re-export `agent-works` multi-agent types (`ChildPermissionMode`, `MultiAgentConfig`).
+
+### Changed
+- Skills directory moves from `.phi/skills` to `.claude/skills`, aligning with the Claude Code directory layout.
+- Bump dependencies to `agent-works` 0.3.0 and `phi-kernel-tools` 0.3.0 (child permission modes, `denied_tools`, file-tool path sandbox removal).
+
 ## [0.11.0] - 2026-08-14
 
 ### Changed

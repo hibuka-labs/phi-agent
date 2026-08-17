@@ -62,10 +62,8 @@ impl SessionContext {
         for entry in rd.flatten() {
             let name = entry.file_name();
             let name = name.to_string_lossy();
-            if let Some(n) = name
-                .strip_prefix("turn_")
-                .and_then(|s| s.strip_suffix(".jsonl"))
-                .and_then(|s| s.parse::<u32>().ok())
+            if let Some(n) =
+                name.strip_prefix("turn_").and_then(|s| s.strip_suffix(".jsonl")).and_then(|s| s.parse::<u32>().ok())
             {
                 max = max.max(n);
             }

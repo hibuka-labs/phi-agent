@@ -10,7 +10,9 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "agent-base"
-version = "0.2.0"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a510c4f88e96c9d7c15dd711e52fac22c1dc39cb376aac5d8063015108599e5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -31,7 +33,9 @@ dependencies = [
 
 [[package]]
 name = "agent-works"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df078af1a7b36a6da6176b8a21e44e1a6bc74845b13f50802e74ce76519b38ec"
 dependencies = [
  "agent-base",
  "async-trait",
@@ -1450,6 +1454,8 @@ checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 [[package]]
 name = "log-core"
 version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e185c302381abe7a6d1945a2b34394a4b91de13f15e3556320526972d6f8679c"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1701,7 +1707,7 @@ dependencies = [
 
 [[package]]
 name = "phi-agent"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -1732,7 +1738,9 @@ dependencies = [
 
 [[package]]
 name = "phi-kernel-tools"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3aa67d91794ba38df68312b69d5878847e45deaf04fa1774681447732a3c1d6"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -1749,6 +1757,8 @@ dependencies = [
 [[package]]
 name = "phi-telemetry"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2a797d4972d609702eb4ff34b70889102fbc68dded8359cf5c3686d93cdc0ce"
 dependencies = [
  "agent-base",
  "anyhow",
@@ -1762,6 +1772,8 @@ dependencies = [
 [[package]]
 name = "phi-tools"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ab20cb096b48a7cb3dcf1b9728c28d6e1c30da6fd0f8f68077f8334228d3099"
 dependencies = [
  "agent-base",
  "anyhow",
