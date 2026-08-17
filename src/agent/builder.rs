@@ -126,9 +126,9 @@ pub fn base_agent_builder_with_excludes(
         use agent_works::skill::prompt_skill::PromptSkill;
         let skill_dirs: Vec<PathBuf> = vec![
             // User-level skills (low priority)
-            dirs_next().join(".phi").join("skills"),
+            dirs_next().join(".claude").join("skills"),
             // Project-level skills (high priority, loaded last to override)
-            PathBuf::from(".phi/skills"),
+            PathBuf::from(".claude/skills"),
         ];
 
         for dir in &skill_dirs {
@@ -155,7 +155,7 @@ pub fn base_agent_builder_with_excludes(
     builder
 }
 
-/// Resolve the user's home directory for `~/.phi/skills/`.
+/// Resolve the user's home directory for `~/.claude/skills/`.
 #[cfg(feature = "file")]
 fn dirs_next() -> std::path::PathBuf {
     std::env::var("HOME")
