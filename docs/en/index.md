@@ -99,7 +99,23 @@ graph TB
     PA[phi-agent<br/>Builder factory · Renderers<br/>Config · Session · CLI]
 ```
 
+agent-base is the runtime kernel. agent-works extends protocols and skills. phi-kernel-tools provides file and shell primitives. phi-agent assembles them into a ready-to-use framework — you just write tools.
+
 Each crate is a separate repository under [hibuka-labs](https://github.com/hibuka-labs). All built on Rust's async runtime with `Arc<dyn LlmClient>` for provider abstraction. File tools and MCP are on by default; shell and multi-agent are opt-in — see [Kernel Tools](guide/tools/file-tools/) for details.
+
+### Pick what you need
+
+Different businesses, different needs — just the runtime? `cargo add agent-base`. MCP but not Shell? Features come and go as you please. phi-agent doesn't lock you in — if you don't want it, it won't even compile.
+
+```toml
+# Lightweight: file tools + MCP only
+phi-agent = { version = "0.11", default-features = false, features = ["file", "mcp"] }
+
+# Full: everything
+phi-agent = { version = "0.11", features = ["full"] }
+```
+
+→ [Full feature list](guide/concepts/architecture/#pick-what-you-need)
 
 ## Links
 

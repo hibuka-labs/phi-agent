@@ -88,6 +88,54 @@ graph TB
 - 配置解析、会话管理、系统提示词
 - `phi` CLI — `cargo install phi-agent`
 
+## 按需引入
+
+每个 crate 都通过 Cargo feature flag 控制模块开关，不想要的就不编译。
+
+### agent-works
+
+| Feature | 能力 | 默认 |
+|---------|------|------|
+| `mcp` | MCP 协议支持 | 关闭 |
+| `skill` | Skills 插件系统 | 关闭 |
+| `focus` | 结构化 LLM 调用 | 关闭 |
+| `multi_agent` | 子 Agent 调度 | 关闭 |
+| `full` | 全部开启 | — |
+
+### phi-kernel-tools
+
+| Feature | 能力 | 默认 |
+|---------|------|------|
+| `file` | 文件读写工具 | 开启 |
+| `shell` | Shell 命令执行 | 关闭 |
+| `multi-agent` | 子 Agent 工具 | 关闭 |
+
+### phi-agent
+
+| Feature | 能力 | 默认 |
+|---------|------|------|
+| `file` | 文件工具 + Skills | 开启 |
+| `mcp` | MCP 协议 | 开启 |
+| `focus` | 结构化 LLM 调用 | 开启 |
+| `shell` | Shell 命令执行 | 关闭 |
+| `multi-agent` | 子 Agent 调度 | 关闭 |
+| `telemetry` | 指标采集 | 开启 |
+| `logging` | 结构化日志 | 开启 |
+| `full` | 全部功能 | — |
+
+### 组合示例
+
+```toml
+# 轻量：只要文件工具 + MCP
+phi-agent = { version = "0.11", default-features = false, features = ["file", "mcp"] }
+
+# 标准：默认配置（文件 + MCP + focus + 遥测 + 日志）
+phi-agent = { version = "0.11" }
+
+# 全量：全部功能
+phi-agent = { version = "0.11", features = ["full"] }
+```
+
 ### 可观测性
 
 phi-agent 自动采集结构化指标。每个 session 写入 `session_metrics.json`：

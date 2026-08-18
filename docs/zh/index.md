@@ -99,7 +99,23 @@ graph TB
     PA[phi-agent<br/>Builder 工厂 · 渲染器<br/>配置 · 会话 · CLI]
 ```
 
-每个 crate 都是 [hibuka-labs](https://github.com/hibuka-labs) 下的独立仓库。基于 Rust 异步运行时，通过 `Arc<dyn LlmClient>` 实现 LLM 提供商抽象。文件工具和 MCP 默认开启，shell 和多 Agent 按需启用 — 详见[内核工具](guide/tools/file-tools/)。
+agent-base 是运行时内核，agent-works 扩展协议与技能，phi-kernel-tools 提供文件和 Shell 原语，phi-agent 把它们组装成框架——你只管写工具。
+
+每个 crate 都是 [hibuka-labs](https://github.com/hibuka-labs) 下的独立仓库，基于 Rust 异步运行时，通过 `Arc<dyn LlmClient>` 实现 LLM 提供商抽象。文件工具和 MCP 默认开启，shell 和多 Agent 按需启用 — 详见[内核工具](guide/tools/file-tools/)。
+
+### 按需组合，用多少引多少
+
+不同业务有不同述求——只需要运行时？`cargo add agent-base`；只要 MCP 不要 Shell？feature 招之即来。phi-agent 不绑架你的依赖树，不想要的，编译都不会进去。
+
+```toml
+# 轻量：只要文件工具 + MCP
+phi-agent = { version = "0.11", default-features = false, features = ["file", "mcp"] }
+
+# 全量：全部功能
+phi-agent = { version = "0.11", features = ["full"] }
+```
+
+→ [完整 feature 列表](guide/concepts/architecture.md#按需引入)
 
 ## 链接
 
