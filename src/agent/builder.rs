@@ -45,33 +45,33 @@ pub fn clear_compression_cache() {
 
 /// Run `compact_session` on the current session: read → compress → write back.
 ///
-/// Returns `Ok(true)` if compression was applied, `Ok(false)` if the session
-/// was below the threshold (no-op), or an error.
-///
-/// No-op (returns `Ok(false)`) when `compression` is disabled.
+/// - `Ok(Some(true))` — compression applied, session rewritten.
+/// - `Ok(Some(false))` — session is below the threshold, no-op.
+/// - `Ok(None)` — compression not available (feature disabled or no compactor registered).
+/// - `Err(...)` — actual error (write-back failure, concurrent modification, etc.).
 pub async fn run_compact_session(
     runtime: &agent_base::AgentRuntime,
     session_id: &agent_base::SessionId,
-) -> agent_base::AgentResult<bool> {
+) -> agent_base::AgentResult<Option<bool>> {
     #[cfg(feature = "compression")]
     {
         // Clone the handle so we can drop the lock before the async call.
         let handle = {
-            let guard = COMPACTOR.lock().map_err(|e| {
-                agent_base::AgentError::internal(format!("COMPACTOR lock poisoned: {e}"))
-            })?;
+            let guard = COMPACTOR
+                .lock()
+                .map_err(|e| agent_base::AgentError::internal(format!("COMPACTOR lock poisoned: {e}")))?;
             guard.as_ref().map(|c| c.clone_handle())
         };
         if let Some(compactor) = handle {
-            return compactor.compact_session(runtime, session_id).await;
+            return compactor.compact_session(runtime, session_id).await.map(Some);
         }
         tracing::warn!("run_compact_session: no compactor registered");
-        Ok(false)
+        Ok(None)
     }
     #[cfg(not(feature = "compression"))]
     {
         let _ = (runtime, session_id);
-        Ok(false)
+        Ok(None)
     }
 }
 
@@ -155,7 +155,12 @@ pub fn base_agent_builder_with_excludes(
     // fall back to the legacy SummarizingMiddleware otherwise.
     #[cfg(feature = "compression")]
     {
-        let compactor = ContextCompactor::new(llm_client.clone(), CompressionConfig::default());
+        let compactor = ContextCompactor::new(
+            llm_client.clone(),
+            CompressionConfig::default()
+                .with_trigger_tokens(100)       // TODO: 恢复为 30_000
+                .with_keep_recent_messages(4), // TODO: 恢复为 40
+        );
         // Store a cloned handle (shared cache) for the /compact command.
         let handle = compactor.clone_handle();
         if let Ok(mut guard) = COMPACTOR.lock() {

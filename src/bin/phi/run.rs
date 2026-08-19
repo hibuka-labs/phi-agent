@@ -150,14 +150,19 @@ pub async fn run_repl(
         }
         if input == "compact" {
             match phi_agent::agent::builder::run_compact_session(agent.runtime(), &agent_session_id).await {
-                Ok(true) => {
+                Ok(Some(true)) => {
                     if matches!(format, OutputFormat::Terminal { .. }) {
                         println!("\n✅ Session compressed (history summarised, recent messages kept)");
                     }
                 },
-                Ok(false) => {
+                Ok(Some(false)) => {
                     if matches!(format, OutputFormat::Terminal { .. }) {
                         println!("\n✅ Session is below threshold — no compression needed");
+                    }
+                },
+                Ok(None) => {
+                    if matches!(format, OutputFormat::Terminal { .. }) {
+                        println!("\n⚠️  Compression not available (feature disabled or no compactor)");
                     }
                 },
                 Err(e) => {
