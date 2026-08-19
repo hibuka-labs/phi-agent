@@ -166,6 +166,36 @@ impl EventRenderer for TerminalRenderer {
             RuntimeEvent::UserEvent { event: agent_base::UserEvent::Progress { text }, .. } => {
                 self.write_line(&format!("\r\x1b[K{}", self.green(text)))?;
             },
+            RuntimeEvent::UserEvent { event: agent_base::UserEvent::Structured { event_type, data }, .. }
+                if event_type == "compression" =>
+            {
+                let phase = data["phase"].as_str().unwrap_or("");
+                match phase {
+                    "start" => {
+                        let tokens = data["tokens_before"].as_u64().unwrap_or(0);
+                        let msgs = data["msg_count"].as_u64().unwrap_or(0);
+                        self.write_line(&format!(
+                            "\r\x1b[K{}",
+                            self.yellow(&format!("⏳ 正在压缩上下文（~{} tokens, {} 条消息）...", tokens, msgs))
+                        ))?;
+                    },
+                    "done" => {
+                        let before = data["tokens_before"].as_u64().unwrap_or(0);
+                        let after = data["tokens_after"].as_u64().unwrap_or(0);
+                        let pct = data["reduction_pct"].as_i64().unwrap_or(0);
+                        let msgs_before = data["msg_count_before"].as_u64().unwrap_or(0);
+                        let msgs_after = data["msg_count_after"].as_u64().unwrap_or(0);
+                        self.write_line(&format!(
+                            "\r\x1b[K{}",
+                            self.green(&format!(
+                                "✅ 上下文已压缩（{} → {} tokens, {}%, {} → {} 条消息）",
+                                before, after, pct, msgs_before, msgs_after
+                            ))
+                        ))?;
+                    },
+                    _ => {},
+                }
+            },
             RuntimeEvent::UserEvent { .. } => {},
             RuntimeEvent::Checkpoint { .. } => {},
         }
@@ -487,6 +517,53 @@ mod tests {
             },
         );
         assert!(out.contains("loading..."));
+    }
+
+    #[test]
+    fn test_render_compression_start_event() {
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: UserEvent::Structured {
+                    event_type: "compression".into(),
+                    data: serde_json::json!({"phase": "start", "tokens_before": 5000, "msg_count": 8}),
+                },
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.contains("正在压缩"));
+        assert!(out.contains("5000"));
+    }
+
+    #[test]
+    fn test_render_compression_done_event() {
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: UserEvent::Structured {
+                    event_type: "compression".into(),
+                    data: serde_json::json!({
+                        "phase": "done",
+                        "tokens_before": 5000,
+                        "tokens_after": 3500,
+                        "reduction_pct": 30,
+                        "msg_count_before": 8,
+                        "msg_count_after": 6,
+                    }),
+                },
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.contains("已压缩"));
+        assert!(out.contains("30%"));
     }
 
     // ── finish_turn tests ──
