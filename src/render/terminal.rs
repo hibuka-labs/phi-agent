@@ -163,6 +163,9 @@ impl EventRenderer for TerminalRenderer {
                 None => self.write_line(&format!("\n{} Cancelled", self.yellow("⚠")))?,
             },
             RuntimeEvent::RunFinished { .. } => {},
+            RuntimeEvent::UserEvent { event: agent_base::UserEvent::Progress { text }, .. } => {
+                self.write_line(&format!("\r\x1b[K{}", self.green(text)))?;
+            },
             RuntimeEvent::UserEvent { .. } => {},
             RuntimeEvent::Checkpoint { .. } => {},
         }
@@ -471,7 +474,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_user_event_progress_no_output() {
+    fn test_render_user_event_progress_shows_text() {
         let out = render_one(
             true,
             true,
@@ -483,7 +486,7 @@ mod tests {
                 trace_id: None,
             },
         );
-        assert!(out.is_empty());
+        assert!(out.contains("loading..."));
     }
 
     // ── finish_turn tests ──

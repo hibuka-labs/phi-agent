@@ -431,6 +431,7 @@ mod tests {
             agent_base::llm::adapt(Arc::new(MockClient { summary: "S".to_string(), calls: AtomicUsize::new(0) }));
         let mw = SummarizingMiddleware::new(client);
         let mut ctx = PreLlmCtx {
+            user_event_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages: vec![ChatMessage::system("sys"), ChatMessage::user("hi")],
             tools: vec![],
@@ -451,6 +452,7 @@ mod tests {
             .with_keep_last_messages(2);
 
         let make_ctx = || PreLlmCtx {
+            user_event_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages: sample_messages(),
             tools: vec![],
@@ -482,6 +484,7 @@ mod tests {
         let mw = SummarizingMiddleware::new(failing).with_trigger_tokens(1).with_keep_last_messages(2);
 
         let mut ctx = PreLlmCtx {
+            user_event_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages: sample_messages(),
             tools: vec![],
@@ -512,8 +515,12 @@ mod tests {
             messages.push(ChatMessage::user(format!("q{i} {chunk}")));
             messages.push(ChatMessage::assistant(format!("a{i}")));
         }
-        let mut ctx =
-            PreLlmCtx { session_id: agent_base::SessionId { id: 1, external_id: None }, messages, tools: vec![] };
+        let mut ctx = PreLlmCtx {
+            user_event_fn: None,
+            session_id: agent_base::SessionId { id: 1, external_id: None },
+            messages,
+            tools: vec![],
+        };
         let before = ctx.messages.len();
         assert!(before > 42, "test fixture must exceed the message-count gate");
         mw.on_pre_llm(&mut ctx).await.unwrap();
