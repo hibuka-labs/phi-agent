@@ -133,6 +133,8 @@ pub async fn run_repl(
         if input.is_empty() {
             continue;
         }
+        // Normalize: strip leading "/" so both "compact" and "/compact" work.
+        let input = input.strip_prefix('/').unwrap_or(&input).to_string();
         if matches!(input.as_str(), "exit" | "quit") {
             tracing::info!("user exit");
             break;
