@@ -146,6 +146,26 @@ pub async fn run_repl(
             }
             continue;
         }
+        if input == "compact" {
+            match phi_agent::agent::builder::run_compact_session(agent.runtime(), &agent_session_id).await {
+                Ok(true) => {
+                    if matches!(format, OutputFormat::Terminal { .. }) {
+                        println!("\n✅ Session compressed (history summarised, recent messages kept)");
+                    }
+                },
+                Ok(false) => {
+                    if matches!(format, OutputFormat::Terminal { .. }) {
+                        println!("\n✅ Session is below threshold — no compression needed");
+                    }
+                },
+                Err(e) => {
+                    if matches!(format, OutputFormat::Terminal { .. }) {
+                        println!("\n❌ Compression failed: {e}");
+                    }
+                },
+            }
+            continue;
+        }
         if input == "tools" {
             let tools = agent.list_tools().await;
             if matches!(format, OutputFormat::Terminal { .. }) {
@@ -331,7 +351,7 @@ pub fn print_welcome_banner(agent: &PhiAgent, session_ctx: &SessionContext) {
     }
     println!("║                                                   ║");
     println!("║  Commands: exit/quit | reset | tools | session | events║");
-    println!("║            snapshot <name> | snapshots                ║");
+    println!("║            compact | snapshot <name> | snapshots        ║");
     println!("╚═══════════════════════════════════════════════════╝");
     println!();
 }

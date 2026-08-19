@@ -43,7 +43,9 @@ pub use phi_telemetry::{
 };
 
 // ── agent-works ──
+#[cfg(feature = "focus")]
 pub use agent_works::focus::{Context as FocusContext, Focus, FocusError, FocusInput, FocusOutput};
+#[cfg(feature = "multi-agent")]
 pub use agent_works::multi_agent::{ChildPermissionMode, MultiAgentConfig};
 
 // ── MCP (feature-gated) ──
@@ -51,9 +53,11 @@ pub use agent_works::multi_agent::{ChildPermissionMode, MultiAgentConfig};
 pub use agent_works::mcp::{McpServeConfig, McpServer, McpServerConfig, McpServerTransport, McpTransport};
 
 // ── phi-agent types ──
+#[cfg(feature = "compression")]
+pub use agent::CompressionMiddleware;
 pub use agent::{
     CompressionConfig, PhiAgent, PhiAgentConfig, SummarizingMiddleware, base_agent_builder,
-    base_agent_builder_with_excludes,
+    base_agent_builder_with_excludes, clear_compression_cache, run_compact_session,
 };
 pub use cli::{ApprovalMode, AutoApprovalHandler};
 pub use config::{LlmConfig, resolve_llm_config};
