@@ -176,7 +176,7 @@ impl EventRenderer for TerminalRenderer {
                         let msgs = data["msg_count"].as_u64().unwrap_or(0);
                         self.write_line(&format!(
                             "\r\x1b[K{}",
-                            self.yellow(&format!("⏳ 正在压缩上下文（~{} tokens, {} 条消息）...", tokens, msgs))
+                            self.yellow(&format!("⏳ Compressing context (~{} tokens, {} messages)...", tokens, msgs))
                         ))?;
                     },
                     "done" => {
@@ -188,7 +188,7 @@ impl EventRenderer for TerminalRenderer {
                         self.write_line(&format!(
                             "\r\x1b[K{}",
                             self.green(&format!(
-                                "✅ 上下文已压缩（{} → {} tokens, {}%, {} → {} 条消息）",
+                                "✅ Context compressed ({} → {} tokens, {}%, {} → {} messages)",
                                 before, after, pct, msgs_before, msgs_after
                             ))
                         ))?;
@@ -535,7 +535,7 @@ mod tests {
                 trace_id: None,
             },
         );
-        assert!(out.contains("正在压缩"));
+        assert!(out.contains("Compressing"));
         assert!(out.contains("5000"));
     }
 
@@ -562,7 +562,7 @@ mod tests {
                 trace_id: None,
             },
         );
-        assert!(out.contains("已压缩"));
+        assert!(out.contains("compressed"));
         assert!(out.contains("30%"));
     }
 
