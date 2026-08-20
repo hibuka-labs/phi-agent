@@ -432,6 +432,7 @@ mod tests {
         let mw = SummarizingMiddleware::new(client);
         let mut ctx = PreLlmCtx {
             user_event_fn: None,
+            drain_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages: vec![ChatMessage::system("sys"), ChatMessage::user("hi")],
             tools: vec![],
@@ -453,6 +454,7 @@ mod tests {
 
         let make_ctx = || PreLlmCtx {
             user_event_fn: None,
+            drain_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages: sample_messages(),
             tools: vec![],
@@ -485,6 +487,7 @@ mod tests {
 
         let mut ctx = PreLlmCtx {
             user_event_fn: None,
+            drain_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages: sample_messages(),
             tools: vec![],
@@ -517,6 +520,7 @@ mod tests {
         }
         let mut ctx = PreLlmCtx {
             user_event_fn: None,
+            drain_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages,
             tools: vec![],

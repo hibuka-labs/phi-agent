@@ -11,6 +11,8 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+use std::sync::{Arc, Mutex};
+
 use common::client;
 use phi_agent::{
     OutputFormat, PhiAgent, PhiAgentConfig, ReasoningEffort, SafetyConfig, base_agent_builder, build_system_prompt,
@@ -39,10 +41,18 @@ async fn main() -> anyhow::Result<()> {
 
     // Run one turn
     let session = agent.create_session().await;
-    let mut renderer =
-        create_stdout_renderer(&OutputFormat::Terminal { show_thinking: true, show_tool_args: true, color: true });
+    let renderer = Arc::new(Mutex::new(create_stdout_renderer(&OutputFormat::Terminal {
+        show_thinking: true,
+        show_tool_args: true,
+        color: true,
+    })));
+    let renderer_clone = renderer.clone();
 
-    agent.run_turn(session, "Hello! Introduce yourself in one sentence.", |event| renderer.render(event)).await?;
+    agent
+        .run_turn(session, "Hello! Introduce yourself in one sentence.", move |event| {
+            renderer_clone.lock().unwrap().render(event)
+        })
+        .await?;
 
     Ok(())
 }

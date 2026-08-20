@@ -11,6 +11,8 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+use std::sync::{Arc, Mutex};
+
 use agent_base::{AgentResult, Content, Tool, ToolContext};
 use async_trait::async_trait;
 use phi_agent::{
@@ -73,8 +75,11 @@ async fn main() -> anyhow::Result<()> {
     )?;
 
     let session = agent.create_session().await;
-    let mut renderer = create_stdout_renderer(&OutputFormat::default());
-    agent.run_turn(session, "I feel a bit cold", |e| renderer.render(e)).await?;
+    let renderer = Arc::new(Mutex::new(create_stdout_renderer(&OutputFormat::default())));
+    let renderer_clone = renderer.clone();
+    agent
+        .run_turn(session, "I feel a bit cold", move |e| renderer_clone.lock().unwrap().render(e))
+        .await?;
     // ────────────────────────────────────────────────────────────────────
 
     Ok(())

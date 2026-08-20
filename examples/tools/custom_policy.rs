@@ -15,6 +15,7 @@
 use std::collections::VecDeque;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::task::{Context, Poll};
 
@@ -243,9 +244,10 @@ async fn main() -> anyhow::Result<()> {
 
     println!("--- Running turn: 'echo hello from hook demo' ---\n");
 
-    let mut events = Vec::new();
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let events_clone = events.clone();
     runtime
-        .run_turn(session_id, "echo hello from hook demo", |event| {
+        .run_turn(session_id, "echo hello from hook demo", move |event| {
             match &event {
                 RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => {
                     println!("  [Event] ToolCallStarted   — tool=\"{tool_name}\", args={args_json}");
@@ -270,13 +272,13 @@ async fn main() -> anyhow::Result<()> {
                 },
                 _ => {},
             }
-            events.push(event);
+            events_clone.lock().unwrap().push(event);
             Ok(())
         })
         .await?;
 
     println!("\n--- Summary ---");
-    println!("Total events captured: {}", events.len());
+    println!("Total events captured: {}", events.lock().unwrap().len());
     println!("ToolPolicy before_call count: {}", policy.before_count.load(Ordering::SeqCst),);
     println!("ToolPolicy after_call count:  {}", policy.after_count.load(Ordering::SeqCst),);
     println!("\nHook execution order:");

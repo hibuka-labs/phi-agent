@@ -11,6 +11,8 @@
 //!   - A running MCP server (e.g. a local stdio server or HTTP endpoint)
 //!   - Update the MCP_SERVER_COMMAND / MCP_SERVER_URL below to match your server
 
+use std::sync::{Arc, Mutex};
+
 use agent_works::mcp::{McpServerConfig, McpTransport};
 use phi_agent::{PhiAgent, PhiAgentConfig, ReasoningEffort, SafetyConfig, base_agent_builder, build_system_prompt};
 
@@ -85,14 +87,17 @@ async fn main() -> anyhow::Result<()> {
 
     // ── 5. Run ──
     let session = agent.create_session().await;
-    let mut renderer = phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
+    let renderer = Arc::new(Mutex::new(phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
         show_thinking: true,
         show_tool_args: true,
         color: true,
-    });
+    })));
+    let renderer_clone = renderer.clone();
 
     println!("\n=== Agent ready with MCP tools ===\n");
-    agent.run_turn(session, "List your available tools", |event| renderer.render(event)).await?;
+    agent
+        .run_turn(session, "List your available tools", move |event| renderer_clone.lock().unwrap().render(event))
+        .await?;
 
     Ok(())
 }

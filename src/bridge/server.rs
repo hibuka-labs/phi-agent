@@ -106,7 +106,7 @@ impl ProtocolServer {
     /// Run a turn on the given session, forwarding events to the callback.
     pub async fn run_turn<F>(&self, sid: &SessionId, input: &str, f: F) -> AgentResult<RunOutcome>
     where
-        F: FnMut(RuntimeEvent) -> AgentResult<()> + Send,
+        F: FnMut(RuntimeEvent) -> AgentResult<()> + Send + 'static,
     {
         self.runtime.run_turn(sid.clone(), input, f).await
     }

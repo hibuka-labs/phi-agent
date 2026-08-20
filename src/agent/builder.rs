@@ -4,7 +4,7 @@
 //! Returns a pre-configured [`agent_works::AgentBuilder`]; callers then register
 //! tools and approval handlers on top.
 
-#[cfg(feature = "file")]
+#[cfg(any(feature = "file", feature = "skill"))]
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -49,9 +49,14 @@ pub fn clear_compression_cache() {
 /// - `Ok(Some(false))` — session is below the threshold, no-op.
 /// - `Ok(None)` — compression not available (feature disabled or no compactor registered).
 /// - `Err(...)` — actual error (write-back failure, concurrent modification, etc.).
+///
+/// When `user_event_fn` is provided, lifecycle events
+/// (`CompressionEvent::Preparing/Started/Progress/Completed`) with
+/// `CompressionTrigger::Manual` are emitted through it.
 pub async fn run_compact_session(
     runtime: &agent_base::AgentRuntime,
     session_id: &agent_base::SessionId,
+    user_event_fn: Option<std::sync::Arc<dyn Fn(agent_base::UserEvent) + Send + Sync>>,
 ) -> agent_base::AgentResult<Option<bool>> {
     #[cfg(feature = "compression")]
     {
@@ -63,14 +68,14 @@ pub async fn run_compact_session(
             guard.as_ref().map(|c| c.clone_handle())
         };
         if let Some(compactor) = handle {
-            return compactor.compact_session(runtime, session_id).await.map(Some);
+            return compactor.compact_session(runtime, session_id, user_event_fn).await.map(Some);
         }
         tracing::warn!("run_compact_session: no compactor registered");
         Ok(None)
     }
     #[cfg(not(feature = "compression"))]
     {
-        let _ = (runtime, session_id);
+        let _ = (runtime, session_id, user_event_fn);
         Ok(None)
     }
 }
@@ -157,9 +162,7 @@ pub fn base_agent_builder_with_excludes(
     {
         let compactor = ContextCompactor::new(
             llm_client.clone(),
-            CompressionConfig::default()
-                .with_trigger_tokens(100)       // TODO: 恢复为 30_000
-                .with_keep_recent_messages(4), // TODO: 恢复为 40
+            CompressionConfig::default().with_trigger_tokens(100).with_keep_recent_messages(4),
         );
         // Store a cloned handle (shared cache) for the /compact command.
         let handle = compactor.clone_handle();
@@ -201,7 +204,7 @@ pub fn base_agent_builder_with_excludes(
     }
 
     // ── Skills: prompt-injection mode (uses read_file, no skill-specific tools) ──
-    #[cfg(feature = "file")]
+    #[cfg(feature = "skill")]
     {
         use agent_works::skill::Skill;
         use agent_works::skill::prompt_skill::PromptSkill;
@@ -237,7 +240,7 @@ pub fn base_agent_builder_with_excludes(
 }
 
 /// Resolve the user's home directory for `~/.claude/skills/`.
-#[cfg(feature = "file")]
+#[cfg(feature = "skill")]
 fn dirs_next() -> std::path::PathBuf {
     std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))

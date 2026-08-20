@@ -11,6 +11,7 @@
 //!   cargo run --example middleware_hooks
 
 use std::sync::atomic::AtomicU32;
+use std::sync::{Arc, Mutex};
 
 use agent_base::{AgentResult, Middleware, PostLlmCtx, PreLlmCtx, UserMessageCtx};
 use async_trait::async_trait;
@@ -88,21 +89,22 @@ async fn main() -> anyhow::Result<()> {
 
     // ── 2. Run with event callback (event-level monitoring) ──
     let session = agent.create_session().await;
-    let mut renderer = phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
+    let renderer = Arc::new(Mutex::new(phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
         show_thinking: false,
         show_tool_args: false,
         color: true,
-    });
+    })));
+    let renderer_clone = renderer.clone();
 
     println!("=== Middleware demo ===\n");
     agent
-        .run_turn(session, "Say hello in exactly 5 words.", |event| {
+        .run_turn(session, "Say hello in exactly 5 words.", move |event| {
             // Event-level hook — fires for every RuntimeEvent
             use agent_base::RuntimeEvent;
             if let RuntimeEvent::ToolCallStarted { tool_name, .. } = &event {
                 println!("[callback] tool call started: {}", tool_name);
             }
-            renderer.render(event)
+            renderer_clone.lock().unwrap().render(event)
         })
         .await?;
 
