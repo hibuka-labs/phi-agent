@@ -50,13 +50,13 @@ pub fn clear_compression_cache() {
 /// - `Ok(None)` — compression not available (feature disabled or no compactor registered).
 /// - `Err(...)` — actual error (write-back failure, concurrent modification, etc.).
 ///
-/// When `user_event_fn` is provided, lifecycle events
+/// When `emit_fn` is provided, lifecycle events
 /// (`CompressionEvent::Preparing/Started/Progress/Completed`) with
 /// `CompressionTrigger::Manual` are emitted through it.
 pub async fn run_compact_session(
     runtime: &agent_base::AgentRuntime,
     session_id: &agent_base::SessionId,
-    user_event_fn: Option<std::sync::Arc<dyn Fn(agent_base::UserEvent) + Send + Sync>>,
+    emit_fn: Option<std::sync::Arc<dyn Fn(agent_base::UserEvent) + Send + Sync>>,
 ) -> agent_base::AgentResult<Option<bool>> {
     #[cfg(feature = "compression")]
     {
@@ -68,14 +68,14 @@ pub async fn run_compact_session(
             guard.as_ref().map(|c| c.clone_handle())
         };
         if let Some(compactor) = handle {
-            return compactor.compact_session(runtime, session_id, user_event_fn).await.map(Some);
+            return compactor.compact_session(runtime, session_id, emit_fn).await.map(Some);
         }
         tracing::warn!("run_compact_session: no compactor registered");
         Ok(None)
     }
     #[cfg(not(feature = "compression"))]
     {
-        let _ = (runtime, session_id, user_event_fn);
+        let _ = (runtime, session_id, emit_fn);
         Ok(None)
     }
 }
@@ -162,7 +162,7 @@ pub fn base_agent_builder_with_excludes(
     {
         let compactor = ContextCompactor::new(
             llm_client.clone(),
-            CompressionConfig::default().with_trigger_tokens(100).with_keep_recent_messages(4),
+            CompressionConfig::default().with_trigger_tokens(30000).with_keep_recent_messages(100),
         );
         // Store a cloned handle (shared cache) for the /compact command.
         let handle = compactor.clone_handle();

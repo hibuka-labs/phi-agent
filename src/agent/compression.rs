@@ -431,8 +431,7 @@ mod tests {
             agent_base::llm::adapt(Arc::new(MockClient { summary: "S".to_string(), calls: AtomicUsize::new(0) }));
         let mw = SummarizingMiddleware::new(client);
         let mut ctx = PreLlmCtx {
-            user_event_fn: None,
-            drain_fn: None,
+            emit_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages: vec![ChatMessage::system("sys"), ChatMessage::user("hi")],
             tools: vec![],
@@ -453,8 +452,7 @@ mod tests {
             .with_keep_last_messages(2);
 
         let make_ctx = || PreLlmCtx {
-            user_event_fn: None,
-            drain_fn: None,
+            emit_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages: sample_messages(),
             tools: vec![],
@@ -486,8 +484,7 @@ mod tests {
         let mw = SummarizingMiddleware::new(failing).with_trigger_tokens(1).with_keep_last_messages(2);
 
         let mut ctx = PreLlmCtx {
-            user_event_fn: None,
-            drain_fn: None,
+            emit_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages: sample_messages(),
             tools: vec![],
@@ -519,8 +516,7 @@ mod tests {
             messages.push(ChatMessage::assistant(format!("a{i}")));
         }
         let mut ctx = PreLlmCtx {
-            user_event_fn: None,
-            drain_fn: None,
+            emit_fn: None,
             session_id: agent_base::SessionId { id: 1, external_id: None },
             messages,
             tools: vec![],
