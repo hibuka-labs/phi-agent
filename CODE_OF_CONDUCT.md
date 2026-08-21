@@ -43,3 +43,4 @@ All complaints will be reviewed and investigated promptly and fairly.
 This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org),
 version 2.0, available at
 https://www.contributor-covenant.org/version/2/0/code_of_conduct.html.
+# bounty-fix-ref: https://github.com/hibuka-labs/phi-agent/issues/20
