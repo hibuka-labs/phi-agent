@@ -5,6 +5,32 @@ All notable changes to phi-agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-08-22
+
+### Breaking
+- **Compression middleware migrated to agent-works**: `SummarizingMiddleware` and `CompressionConfig` removed from phi-agent; replaced by `CompressionMiddleware` from `agent-works` behind the `compression` feature flag.
+- **`file` feature no longer includes skills**: skills are now gated behind a separate `skill` feature flag.
+- **`run_turn` callback requires `'static` bound**.
+- **Dependency bumps**: `agent-base` 0.3.0, `agent-works` 0.4.0, `phi-kernel-tools` 0.4.0, `phi-tools` 0.3.0, `phi-telemetry` 0.2.1.
+
+### Added
+- `base_agent_builder_with_options()` — builder variant accepting custom `CompressionConfig`.
+- `clear_compression_cache()` — clear the compression summary cache from REPL `/compact` command.
+- `run_compact_session()` — manually trigger session compression with three-state return.
+- New feature flags: `focus`, `compression`, `skill` (all granular, not bundled in `file`).
+- Compression lifecycle event rendering in terminal (Progress, Structured events).
+- `FinishReason` re-export from `agent-base`.
+- `base_agent_builder_with_excludes()` now delegates to `base_agent_builder_with_options()`.
+
+### Changed
+- Default features now include `focus` and `compression`.
+- `full` features now include `skill`, `focus`, `compression`.
+- Compression uses `ContextCompactor` from agent-works (hybrid retention + stable-prefix cache).
+
+### Fixed
+- REPL command input no longer includes leading `/`.
+- Compression compact_session returns `Option<bool>` for three-state semantics.
+
 ## [0.11.1] - 2026-08-17
 
 ### Added
@@ -202,6 +228,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LLM config resolution (CLI > env > .env > default)
 - `LocalShellTool` (via phi-tools)
 
+[0.12.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.11.1...v0.12.0
+[0.11.1]: https://github.com/hibuka-labs/phi-agent/compare/v0.9.0...v0.11.1
 [0.9.1]: https://github.com/hibuka-labs/phi-agent/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.2.9...v0.3.0
