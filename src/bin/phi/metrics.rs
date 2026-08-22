@@ -6,7 +6,7 @@ use anyhow::Result;
 use phi_agent::SessionMetrics;
 use phi_telemetry::{SessionOutcome, TurnOutcome, list_all_metrics, load_metrics};
 
-use crate::args::{CliArgs, MetricsCmd};
+use crate::args::{CliArgs, MetricsCmd, MetricsSort};
 use crate::run::truncate_str;
 
 // ── Metrics commands ──
@@ -16,8 +16,32 @@ pub fn handle_metrics(cmd: &MetricsCmd, args: &CliArgs) -> Result<()> {
     let log_dir_path = std::path::PathBuf::from(&log_dir);
 
     match cmd {
-        MetricsCmd::List => {
-            let summaries = list_all_metrics(&log_dir_path)?;
+        MetricsCmd::List { sort } => {
+            let mut summaries = list_all_metrics(&log_dir_path)?;
+
+            // Default order is whatever list_all_metrics produced (date
+            // ascending); the other keys sort descending — biggest first —
+            // with created_at as a stable tiebreaker.
+            match sort {
+                MetricsSort::Date => {},
+                MetricsSort::Turns => {
+                    summaries.sort_by(|a, b| b.total_turns.cmp(&a.total_turns).then(a.created_at.cmp(&b.created_at)));
+                },
+                MetricsSort::Chars => {
+                    summaries.sort_by(|a, b| b.total_chars.cmp(&a.total_chars).then(a.created_at.cmp(&b.created_at)));
+                },
+                MetricsSort::Outcome => {
+                    let rank = |o: &SessionOutcome| match o {
+                        SessionOutcome::Failed => 0,
+                        SessionOutcome::MaxTurns => 1,
+                        SessionOutcome::Cancelled => 2,
+                        SessionOutcome::Completed => 3,
+                    };
+                    summaries
+                        .sort_by(|a, b| rank(&a.outcome).cmp(&rank(&b.outcome)).then(a.created_at.cmp(&b.created_at)));
+                },
+            }
+
             if summaries.is_empty() {
                 println!("No sessions found.");
                 return Ok(());

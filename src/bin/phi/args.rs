@@ -166,10 +166,22 @@ pub enum SubCommand {
     },
 }
 
+#[derive(Clone, Debug, clap::ValueEnum)]
+pub enum MetricsSort {
+    Date,
+    Turns,
+    Chars,
+    Outcome,
+}
+
 #[derive(Subcommand, Debug)]
 pub enum MetricsCmd {
     /// List all sessions with token usage, cost, and outcome.
-    List,
+    List {
+        /// Sort by: date (default), turns, chars, outcome.
+        #[arg(long, value_enum, default_value = "date")]
+        sort: MetricsSort,
+    },
     /// Show detailed metrics for a specific session.
     Show {
         /// Session ID (e.g. "20260730_c52b4c91")
