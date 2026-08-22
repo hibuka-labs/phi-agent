@@ -1725,7 +1725,7 @@ dependencies = [
 
 [[package]]
 name = "phi-agent"
-version = "0.12.1"
+version = "0.12.2"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -1757,9 +1757,9 @@ dependencies = [
 
 [[package]]
 name = "phi-kernel-tools"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "726bae912322a160199567ddcae5709b86951324f9ffbb55b5d9b89749984292"
+checksum = "4175b5bf19ac7939a9c0ee5a62588a7ef69e93f310ea2ae6d6c26737e07df0c5"
 dependencies = [
  "agent-base",
  "agent-works",
