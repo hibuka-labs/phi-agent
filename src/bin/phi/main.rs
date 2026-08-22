@@ -36,6 +36,11 @@ async fn main() -> Result<()> {
         match cmd {
             SubCommand::Init { name, lib } => return init::run(name, *lib),
             SubCommand::Metrics { cmd } => return metrics::handle_metrics(cmd, &args),
+            SubCommand::Completions { shell } => {
+                let mut cmd = <CliArgs as clap::CommandFactory>::command();
+                clap_complete::generate(*shell, &mut cmd, "phi", &mut std::io::stdout());
+                return Ok(());
+            },
             SubCommand::Serve { http, bridge } => {
                 if *bridge {
                     return bridge_serve::run().await;

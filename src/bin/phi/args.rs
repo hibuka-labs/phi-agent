@@ -1,5 +1,6 @@
 use agent_base::ReasoningEffort;
 use clap::{Parser, Subcommand};
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -106,7 +107,7 @@ pub struct CliArgs {
     pub connect_ws: Option<String>,
 }
 
-#[derive(Clone, Debug, clap::ValueEnum)]
+#[derive(Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
 pub enum OutputFormatArg {
     /// Rich terminal output
     Terminal,
@@ -164,12 +165,30 @@ pub enum SubCommand {
         #[arg(long, default_value = "false")]
         bridge: bool,
     },
+    /// Generate shell completion scripts.
+    Completions {
+        /// Shell to generate for (bash, zsh, fish, elvish, powershell).
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
+    },
+}
+
+#[derive(Clone, Debug, clap::ValueEnum)]
+pub enum MetricsSort {
+    Date,
+    Turns,
+    Chars,
+    Outcome,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum MetricsCmd {
     /// List all sessions with token usage, cost, and outcome.
-    List,
+    List {
+        /// Sort by: date (default), turns, chars, outcome.
+        #[arg(long, value_enum, default_value = "date")]
+        sort: MetricsSort,
+    },
     /// Show detailed metrics for a specific session.
     Show {
         /// Session ID (e.g. "20260730_c52b4c91")
@@ -177,4 +196,10 @@ pub enum MetricsCmd {
     },
     /// Show the most recent session.
     Last,
+    /// Export all session metrics as a JSON array.
+    Export {
+        /// Output file path (JSON). Defaults to stdout when omitted.
+        #[arg(long, short)]
+        output: Option<PathBuf>,
+    },
 }
