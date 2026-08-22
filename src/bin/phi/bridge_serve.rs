@@ -299,6 +299,7 @@ async fn write_msg(w: &mut BufWriter<tokio::io::Stdout>, m: &OutgoingMessage) ->
 fn oc_str(o: &phi_agent::RunOutcome) -> &'static str {
     match o {
         phi_agent::RunOutcome::Completed => "completed",
+        phi_agent::RunOutcome::Continuing => "continuing",
         phi_agent::RunOutcome::Failed { .. } => "failed",
         phi_agent::RunOutcome::MaxTurnsExceeded { .. } => "max_turns_exceeded",
         phi_agent::RunOutcome::Cancelled => "cancelled",

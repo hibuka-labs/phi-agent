@@ -10,8 +10,6 @@ use std::sync::Arc;
 
 use agent_base::{ConsecutiveFailureRecovery, Language, ReasoningConfig, ReasoningEffort, UpdatePlanTool};
 
-#[cfg(not(feature = "compression"))]
-use crate::agent::compression::SummarizingMiddleware;
 #[cfg(feature = "compression")]
 use agent_works::compression::{CompressionConfig, CompressionMiddleware, ContextCompactor};
 
@@ -121,6 +119,18 @@ pub fn base_agent_builder_with_excludes(
     llm_client: Arc<dyn agent_base::StreamClient>,
     file_excludes: Vec<String>,
 ) -> agent_works::AgentBuilder {
+    base_agent_builder_with_options(llm_client, file_excludes, None)
+}
+
+/// Like [`base_agent_builder_with_excludes`], but also lets the consumer
+/// override the [`CompressionConfig`] used by the context-compression
+/// middleware.  Pass `None` to use the defaults.
+#[allow(unused_mut)]
+pub fn base_agent_builder_with_options(
+    llm_client: Arc<dyn agent_base::StreamClient>,
+    file_excludes: Vec<String>,
+    compression_config: Option<CompressionConfig>,
+) -> agent_works::AgentBuilder {
     // Tool-output cap (default 4000 chars). Tune via PHI_MAX_TOOL_OUTPUT_CHARS for large
     // outputs (HTML, base64 images, long lists). The engine REJECTS output that exceeds
     // this cap (design §6.5) rather than silently truncating. Tools that can bound
@@ -155,25 +165,17 @@ pub fn base_agent_builder_with_excludes(
         .max_tool_output_chars(max_tool_output_chars)
         .error_recovery(Arc::new(ConsecutiveFailureRecovery::new(3)));
 
-    // Context compression: use the new CompressionMiddleware from agent-works
-    // (hybrid retention + stable-prefix cache + handoff summary) when available,
-    // fall back to the legacy SummarizingMiddleware otherwise.
+    // Context compression: use CompressionMiddleware from agent-works
+    // (hybrid retention + stable-prefix cache + handoff summary).
     #[cfg(feature = "compression")]
     {
-        let compactor = ContextCompactor::new(
-            llm_client.clone(),
-            CompressionConfig::default().with_trigger_tokens(30000).with_keep_recent_messages(100),
-        );
+        let compactor = ContextCompactor::new(llm_client.clone(), compression_config.unwrap_or_default());
         // Store a cloned handle (shared cache) for the /compact command.
         let handle = compactor.clone_handle();
         if let Ok(mut guard) = COMPACTOR.lock() {
             *guard = Some(handle);
         }
         builder = builder.middleware(CompressionMiddleware::from_compactor(compactor));
-    }
-    #[cfg(not(feature = "compression"))]
-    {
-        builder = builder.middleware(SummarizingMiddleware::new(llm_client));
     }
 
     // ── File tools (opt-in via `file` feature) ──

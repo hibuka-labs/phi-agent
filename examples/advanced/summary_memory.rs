@@ -4,8 +4,8 @@
 //! summary paragraph. The summary is injected as a system message so the
 //! agent retains context without exceeding token limits.
 //!
-//! phi-agent already ships with `SummarizingMiddleware` (in
-//! `src/agent/compression.rs`). This example shows how to build your own
+//! phi-agent uses `CompressionMiddleware` from agent-works (in
+//! `agent_works::compression`). This example shows how to build your own
 //! custom compression strategy on top of the Middleware trait.
 //!
 //! Usage:
