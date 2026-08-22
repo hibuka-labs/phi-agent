@@ -1,4 +1,4 @@
-# phi serve (Bridge 协议)
+# phi 服务（Bridge 协议）
 
 `phi serve` 通过 Bridge 协议将 phi-agent 暴露为 MCP 服务器。外部编排器、CI 流水线或其他工具可通过 stdio 或 HTTP 与 Agent 交互。
 

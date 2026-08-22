@@ -63,6 +63,7 @@ plugins:
                 - Focus: guide/concepts/focus.md
                 - Memory: guide/concepts/memory.md
                 - Skills: guide/concepts/skills.md
+                - React Loop Guard: guide/concepts/react-loop-guard.md
             - Tools:
                 - Custom Tools: guide/tools/custom-tool.md
                 - Kernel Tools: guide/tools/file-tools.md
@@ -92,6 +93,7 @@ plugins:
                 - Focus 专注判断: guide/concepts/focus.md
                 - 记忆: guide/concepts/memory.md
                 - Skills 技能: guide/concepts/skills.md
+                - 回路守卫: guide/concepts/react-loop-guard.md
             - 工具:
                 - 自定义工具: guide/tools/custom-tool.md
                 - 内核工具: guide/tools/file-tools.md
@@ -104,7 +106,7 @@ plugins:
                 - 高级用法: guide/advanced/advanced.md
             - CLI:
                 - CLI 使用: guide/cli/cli.md
-                - phi serve: guide/cli/phi-serve.md
+                - phi 服务: guide/cli/phi-serve.md
             - 参考:
                 - API 参考: api.md
                 - 社区: community.md
