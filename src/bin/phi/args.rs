@@ -164,6 +164,12 @@ pub enum SubCommand {
         #[arg(long, default_value = "false")]
         bridge: bool,
     },
+    /// Generate shell completion scripts.
+    Completions {
+        /// Shell to generate for (bash, zsh, fish, elvish, powershell).
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
+    },
 }
 
 #[derive(Clone, Debug, clap::ValueEnum)]
