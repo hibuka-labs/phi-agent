@@ -172,3 +172,21 @@ pub fn format_number(n: u64) -> String {
         n.to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_number() {
+        assert_eq!(format_number(0), "0");
+        assert_eq!(format_number(42), "42");
+        assert_eq!(format_number(999), "999");
+        assert_eq!(format_number(1000), "1.0K");
+        assert_eq!(format_number(1500), "1.5K");
+        assert_eq!(format_number(999_999), "1000.0K");
+        assert_eq!(format_number(1_000_000), "1.0M");
+        assert_eq!(format_number(2_500_000), "2.5M");
+    }
+}
+
