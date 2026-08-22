@@ -107,6 +107,39 @@ pub fn handle_metrics(cmd: &MetricsCmd, args: &CliArgs) -> Result<()> {
                 },
             }
         },
+
+        MetricsCmd::Export { output } => {
+            let sessions_dir = log_dir_path.join("sessions");
+            if !sessions_dir.exists() {
+                anyhow::bail!("No metrics found at {} (no sessions have been logged yet).", sessions_dir.display());
+            }
+
+            // Full detail, not just summaries: export exists so analysts can
+            // reconstruct per-turn behaviour offline.
+            let mut all = Vec::new();
+            for entry in std::fs::read_dir(&sessions_dir)? {
+                let path = entry?.path();
+                if path.is_dir()
+                    && let Ok(metrics) = load_metrics(&path)
+                {
+                    all.push(metrics);
+                }
+            }
+            all.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+
+            if all.is_empty() {
+                anyhow::bail!("No session metrics found in {}.", sessions_dir.display());
+            }
+
+            let json = serde_json::to_string_pretty(&all)?;
+            match output {
+                Some(path) => {
+                    std::fs::write(path, json.as_bytes())?;
+                    println!("  Exported {} session(s) to {}", all.len(), path.display());
+                },
+                None => println!("{}", json),
+            }
+        },
     }
 
     Ok(())

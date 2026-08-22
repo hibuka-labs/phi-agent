@@ -1,5 +1,6 @@
 use agent_base::ReasoningEffort;
 use clap::{Parser, Subcommand};
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -195,4 +196,10 @@ pub enum MetricsCmd {
     },
     /// Show the most recent session.
     Last,
+    /// Export all session metrics as a JSON array.
+    Export {
+        /// Output file path (JSON). Defaults to stdout when omitted.
+        #[arg(long, short)]
+        output: Option<PathBuf>,
+    },
 }
