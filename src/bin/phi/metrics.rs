@@ -6,7 +6,7 @@ use anyhow::Result;
 use phi_agent::SessionMetrics;
 use phi_telemetry::{SessionOutcome, TurnOutcome, list_all_metrics, load_metrics};
 
-use crate::args::{CliArgs, MetricsCmd, MetricsSort};
+use crate::args::{CliArgs, MetricsCmd, MetricsSort, OutputFormatArg};
 use crate::run::truncate_str;
 
 // ── Metrics commands ──
@@ -44,6 +44,13 @@ pub fn handle_metrics(cmd: &MetricsCmd, args: &CliArgs) -> Result<()> {
 
             if summaries.is_empty() {
                 println!("No sessions found.");
+                return Ok(());
+            }
+
+            // JSON consumers get the raw summaries; the table below is for
+            // terminals only.
+            if args.format == OutputFormatArg::Json {
+                println!("{}", serde_json::to_string_pretty(&summaries)?);
                 return Ok(());
             }
 

@@ -106,7 +106,7 @@ pub struct CliArgs {
     pub connect_ws: Option<String>,
 }
 
-#[derive(Clone, Debug, clap::ValueEnum)]
+#[derive(Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
 pub enum OutputFormatArg {
     /// Rich terminal output
     Terminal,
