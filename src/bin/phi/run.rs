@@ -2,6 +2,8 @@
 //!
 //! Extracted from main.rs to keep the entry point focused on config assembly.
 
+use std::sync::{Arc, Mutex};
+
 use anyhow::Result;
 use phi_agent::render::{OutputFormat, create_stdout_renderer};
 use phi_agent::{PhiAgent, RunOutcome, SessionContext, save_turn_log};
@@ -19,8 +21,9 @@ pub async fn run_one_shot(
     let turn_start = std::time::Instant::now();
     tracing::debug!(input = %truncate_str(query, 80), "one-shot started");
 
-    let mut renderer = create_stdout_renderer(format);
-    let mut turn_events: Vec<phi_agent::RuntimeEvent> = Vec::new();
+    let renderer: Arc<Mutex<Box<dyn phi_agent::render::EventRenderer>>> =
+        Arc::new(Mutex::new(create_stdout_renderer(format)));
+    let turn_events: Arc<Mutex<Vec<phi_agent::RuntimeEvent>>> = Arc::new(Mutex::new(Vec::new()));
 
     // Ctrl+C cancellation
     let cancel_agent = agent.clone();
@@ -30,10 +33,12 @@ pub async fn run_one_shot(
         }
     });
 
+    let turn_events_clone = turn_events.clone();
+    let renderer_clone = renderer.clone();
     let result = agent
-        .run_turn(agent_session_id.clone(), query, |event| {
-            turn_events.push(event.clone());
-            renderer.render(event)
+        .run_turn(agent_session_id.clone(), query, move |event| {
+            turn_events_clone.lock().unwrap().push(event.clone());
+            renderer_clone.lock().unwrap().render(event)
         })
         .await;
 
@@ -43,8 +48,9 @@ pub async fn run_one_shot(
     };
 
     cancel_handle.abort();
-    let _ = renderer.finish_turn();
+    let _ = renderer.lock().unwrap().finish_turn();
 
+    let turn_events = Arc::try_unwrap(turn_events).unwrap().into_inner().unwrap();
     let _ = save_turn_log(session_ctx, 1, &turn_events, query);
 
     if matches!(format, OutputFormat::Json) {
@@ -133,6 +139,8 @@ pub async fn run_repl(
         if input.is_empty() {
             continue;
         }
+        // Normalize: strip leading "/" so both "compact" and "/compact" work.
+        let input = input.strip_prefix('/').unwrap_or(&input).to_string();
         if matches!(input.as_str(), "exit" | "quit") {
             tracing::info!("user exit");
             break;
@@ -143,6 +151,31 @@ pub async fn run_repl(
             tracing::info!(new_session_id = %agent_session_id.id, "session reset");
             if matches!(format, OutputFormat::Terminal { .. }) {
                 println!("\n✅ New session created");
+            }
+            continue;
+        }
+        if input == "compact" {
+            match phi_agent::agent::builder::run_compact_session(agent.runtime(), &agent_session_id, None).await {
+                Ok(Some(true)) => {
+                    if matches!(format, OutputFormat::Terminal { .. }) {
+                        println!("\n✅ Session compressed (history summarised, recent messages kept)");
+                    }
+                },
+                Ok(Some(false)) => {
+                    if matches!(format, OutputFormat::Terminal { .. }) {
+                        println!("\n✅ Session is below threshold — no compression needed");
+                    }
+                },
+                Ok(None) => {
+                    if matches!(format, OutputFormat::Terminal { .. }) {
+                        println!("\n⚠️  Compression not available (feature disabled or no compactor)");
+                    }
+                },
+                Err(e) => {
+                    if matches!(format, OutputFormat::Terminal { .. }) {
+                        println!("\n❌ Compression failed: {e}");
+                    }
+                },
             }
             continue;
         }
@@ -243,7 +276,6 @@ pub async fn run_repl(
         let turn_start = std::time::Instant::now();
         tracing::debug!(turn = turn_number, input = %truncate_str(&input, 80), "turn started");
 
-        let mut renderer = create_stdout_renderer(format);
         let mut turn_events: Vec<phi_agent::RuntimeEvent> = Vec::new();
 
         let cancel_agent = agent.clone();
@@ -253,16 +285,26 @@ pub async fn run_repl(
             }
         });
 
+        // Wrap in Arc<Mutex> for the 'static closure
+        let renderer_arc: Arc<Mutex<Box<dyn phi_agent::render::EventRenderer>>> =
+            Arc::new(Mutex::new(create_stdout_renderer(format)));
+        let turn_events_arc: Arc<Mutex<Vec<phi_agent::RuntimeEvent>>> = Arc::new(Mutex::new(turn_events));
+
+        let turn_events_clone = turn_events_arc.clone();
+        let renderer_clone = renderer_arc.clone();
         match agent
-            .run_turn(agent_session_id.clone(), &input, |event| {
-                turn_events.push(event.clone());
-                renderer.render(event)
+            .run_turn(agent_session_id.clone(), &input, move |event| {
+                turn_events_clone.lock().unwrap().push(event.clone());
+                renderer_clone.lock().unwrap().render(event)
             })
             .await
         {
             Ok(_) => {
                 cancel_handle.abort();
-                renderer.finish_turn()?;
+                renderer_arc.lock().unwrap().finish_turn()?;
+
+                turn_events = Arc::try_unwrap(turn_events_arc).unwrap().into_inner().unwrap();
+                drop(renderer_arc);
 
                 let is_cancelled = agent.is_cancelled();
                 save_turn_log(session_ctx, turn_number, &turn_events, &input)?;
@@ -285,7 +327,10 @@ pub async fn run_repl(
             },
             Err(err) => {
                 cancel_handle.abort();
-                renderer.finish_turn()?;
+                renderer_arc.lock().unwrap().finish_turn()?;
+
+                turn_events = Arc::try_unwrap(turn_events_arc).unwrap().into_inner().unwrap();
+                drop(renderer_arc);
 
                 save_turn_log(session_ctx, turn_number, &turn_events, &input)?;
 
@@ -331,7 +376,7 @@ pub fn print_welcome_banner(agent: &PhiAgent, session_ctx: &SessionContext) {
     }
     println!("║                                                   ║");
     println!("║  Commands: exit/quit | reset | tools | session | events║");
-    println!("║            snapshot <name> | snapshots                ║");
+    println!("║            compact | snapshot <name> | snapshots        ║");
     println!("╚═══════════════════════════════════════════════════╝");
     println!();
 }

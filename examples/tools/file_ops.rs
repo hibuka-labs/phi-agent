@@ -19,6 +19,8 @@
 //! cargo run --no-default-features --example file_ops
 //! ```
 
+use std::sync::{Arc, Mutex};
+
 use phi_agent::{PhiAgent, PhiAgentConfig, ReasoningEffort, SafetyConfig, base_agent_builder, build_system_prompt};
 
 #[path = "../common/mod.rs"]
@@ -61,18 +63,19 @@ async fn main() -> anyhow::Result<()> {
     //   - "Read Cargo.toml and tell me the dependencies"
     //   - "Create a file named hello.txt with content 'Hello, phi!'"
     let session = agent.create_session().await;
-    let mut renderer = phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
+    let renderer = Arc::new(Mutex::new(phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
         show_thinking: true,
         show_tool_args: true,
         color: true,
-    });
+    })));
+    let renderer_clone = renderer.clone();
 
     println!("\n=== Agent ready with file tools ===\n");
     agent
         .run_turn(
             session,
             "List the files in the current directory and tell me what kind of project this is.",
-            |event| renderer.render(event),
+            move |event| renderer_clone.lock().unwrap().render(event),
         )
         .await?;
 

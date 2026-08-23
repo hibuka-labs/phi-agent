@@ -11,6 +11,8 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+use std::sync::{Arc, Mutex};
+
 use agent_base::{AgentResult, Content, Tool, ToolContext};
 use async_trait::async_trait;
 use common::client;
@@ -108,13 +110,19 @@ async fn main() -> anyhow::Result<()> {
     )?;
 
     let session = agent.create_session().await;
-    let mut renderer =
-        create_stdout_renderer(&OutputFormat::Terminal { show_thinking: true, show_tool_args: true, color: true });
+    let renderer = Arc::new(Mutex::new(create_stdout_renderer(&OutputFormat::Terminal {
+        show_thinking: true,
+        show_tool_args: true,
+        color: true,
+    })));
+    let renderer_clone = renderer.clone();
 
     println!("Agent with system_info + env_var tools. Try asking about the system!\n");
 
     agent
-        .run_turn(session, "What's my current system info? Also check if HOME is set.", |event| renderer.render(event))
+        .run_turn(session, "What's my current system info? Also check if HOME is set.", move |event| {
+            renderer_clone.lock().unwrap().render(event)
+        })
         .await?;
 
     Ok(())

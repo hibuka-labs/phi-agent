@@ -2,11 +2,15 @@
 
 Skills are reusable agent behaviors defined as markdown files. phi-agent follows the [agentskills.io](https://agentskills.io) open standard — the same format used by Claude Code, Codex, and other modern agent frameworks.
 
+## Why `.claude` directory
+
+The Skills spec was pioneered by Claude Code, and `.claude/skills/` has become the community's common path. phi-agent follows this convention instead of inventing `.phi/skills/` — so skills you've built for Claude Code work in phi-agent out of the box, with zero migration.
+
 ## How skills work
 
 Skills use **prompt-injection** mode:
 
-1. Skill definitions are scanned from `.phi/skills/` and `~/.phi/skills/`
+1. Skill definitions are scanned from `.claude/skills/` and `~/.claude/skills/`
 2. The skill list (name + description) is injected into the system prompt
 3. When the agent needs a skill, it uses `read_file` to load the full `SKILL.md`
 4. No dedicated skill tools — just file I/O + prompt instructions
@@ -16,7 +20,7 @@ This aligns with the Claude Code / Codex model: give the agent file access, and 
 ## Directory structure
 
 ```
-.phi/skills/
+.claude/skills/
   deploy/
     SKILL.md              # Required: YAML frontmatter + markdown body
     scripts/              # Optional: executable helper scripts
@@ -87,8 +91,8 @@ Skills use a three-layer model to save tokens:
 
 ## User-level vs project-level
 
-- `~/.phi/skills/` — user-level, shared across all projects
-- `.phi/skills/` — project-level, version-controlled with your code
+- `~/.claude/skills/` — user-level, shared across all projects
+- `.claude/skills/` — project-level, version-controlled with your code
 
 Project-level skills take priority on name conflicts.
 
@@ -99,7 +103,7 @@ Project-level skills take priority on name conflicts.
 phi skill init my-skill
 
 # Result:
-# .phi/skills/my-skill/
+# .claude/skills/my-skill/
 #   SKILL.md
 ```
 

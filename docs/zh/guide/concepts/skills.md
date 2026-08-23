@@ -2,11 +2,15 @@
 
 Skills 是以 markdown 文件定义的可复用 Agent 行为。phi-agent 遵循 [agentskills.io](https://agentskills.io) 开放标准 — 与 Claude Code、Codex 等主流 Agent 框架使用相同的格式。
 
+## 为什么是 `.claude` 目录
+
+Skills 规范由 Claude Code 率先提出，`.claude/skills/` 已成为社区约定的通用路径。phi-agent 沿用这一约定，而非自创 `.phi/skills/`——这样你在 Claude Code 中积累的技能，phi-agent 开箱即用，零迁移成本。
+
 ## 工作原理
 
 Skills 使用 **prompt-injection** 模式：
 
-1. 从 `.phi/skills/` 和 `~/.phi/skills/` 扫描技能定义
+1. 从 `.claude/skills/` 和 `~/.claude/skills/` 扫描技能定义
 2. 技能列表（名称 + 描述）注入 system prompt
 3. Agent 需要某个技能时，使用 `read_file` 加载完整的 `SKILL.md`
 4. 没有专用的技能工具 — 只有文件 I/O + prompt 指令
@@ -16,7 +20,7 @@ Skills 使用 **prompt-injection** 模式：
 ## 目录结构
 
 ```
-.phi/skills/
+.claude/skills/
   deploy/
     SKILL.md              # 必需：YAML frontmatter + markdown 正文
     scripts/              # 可选：可执行辅助脚本
@@ -87,8 +91,8 @@ Skills 使用三层模型以节省 token：
 
 ## 用户级 vs 项目级
 
-- `~/.phi/skills/` — 用户级，跨所有项目共享
-- `.phi/skills/` — 项目级，随代码版本控制
+- `~/.claude/skills/` — 用户级，跨所有项目共享
+- `.claude/skills/` — 项目级，随代码版本控制
 
 名称冲突时以项目级优先。
 
@@ -99,7 +103,7 @@ Skills 使用三层模型以节省 token：
 phi skill init my-skill
 
 # 生成结果：
-# .phi/skills/my-skill/
+# .claude/skills/my-skill/
 #   SKILL.md
 ```
 

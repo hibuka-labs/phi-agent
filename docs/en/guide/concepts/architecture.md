@@ -88,6 +88,54 @@ Framework layer — `cargo add phi-agent` for the full thing:
 - Config resolution, session management, system prompts
 - `phi` CLI binary — `cargo install phi-agent`
 
+## Pick what you need
+
+Each crate uses Cargo feature flags to control what gets compiled. Don't need it? Don't compile it.
+
+### agent-works
+
+| Feature | Capability | Default |
+|---------|------------|---------|
+| `mcp` | MCP protocol support | Off |
+| `skill` | Skills plugin system | Off |
+| `focus` | Structured LLM calls | Off |
+| `multi_agent` | Sub-agent orchestration | Off |
+| `full` | Everything | — |
+
+### phi-kernel-tools
+
+| Feature | Capability | Default |
+|---------|------------|---------|
+| `file` | File read/write tools | On |
+| `shell` | Shell command execution | Off |
+| `multi-agent` | Sub-agent tools | Off |
+
+### phi-agent
+
+| Feature | Capability | Default |
+|---------|------------|---------|
+| `file` | File tools + Skills | On |
+| `mcp` | MCP protocol | On |
+| `focus` | Structured LLM calls | On |
+| `shell` | Shell command execution | Off |
+| `multi-agent` | Sub-agent orchestration | Off |
+| `telemetry` | Metrics collection | On |
+| `logging` | Structured logging | On |
+| `full` | Everything | — |
+
+### Examples
+
+```toml
+# Lightweight: file tools + MCP only
+phi-agent = { version = "0.11", default-features = false, features = ["file", "mcp"] }
+
+# Standard: default config (file + MCP + focus + telemetry + logging)
+phi-agent = { version = "0.11" }
+
+# Full: everything
+phi-agent = { version = "0.11", features = ["full"] }
+```
+
 ### Telemetry & Observability
 
 phi-agent collects structured metrics automatically. Every session writes a `session_metrics.json`:

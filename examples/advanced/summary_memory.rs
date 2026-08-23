@@ -4,12 +4,14 @@
 //! summary paragraph. The summary is injected as a system message so the
 //! agent retains context without exceeding token limits.
 //!
-//! phi-agent already ships with `SummarizingMiddleware` (in
-//! `src/agent/compression.rs`). This example shows how to build your own
+//! phi-agent uses `CompressionMiddleware` from agent-works (in
+//! `agent_works::compression`). This example shows how to build your own
 //! custom compression strategy on top of the Middleware trait.
 //!
 //! Usage:
 //!   cargo run --example summary_memory
+
+use std::sync::{Arc, Mutex};
 
 use agent_base::{AgentResult, ChatMessage, Middleware, PreLlmCtx};
 use async_trait::async_trait;
@@ -97,14 +99,19 @@ async fn main() -> anyhow::Result<()> {
     )?;
 
     let session = agent.create_session().await;
-    let mut renderer = phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
+    let renderer = Arc::new(Mutex::new(phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
         show_thinking: false,
         show_tool_args: false,
         color: true,
-    });
+    })));
+    let renderer_clone = renderer.clone();
 
     println!("=== Summary Memory demo ===\n");
-    agent.run_turn(session, "Tell me a short story in 3 sentences.", |event| renderer.render(event)).await?;
+    agent
+        .run_turn(session, "Tell me a short story in 3 sentences.", move |event| {
+            renderer_clone.lock().unwrap().render(event)
+        })
+        .await?;
 
     println!("\n=== Summary memory demonstrated ===");
     Ok(())

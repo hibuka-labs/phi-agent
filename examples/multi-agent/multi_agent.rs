@@ -15,6 +15,8 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+use std::sync::{Arc, Mutex};
+
 use agent_works::multi_agent::MultiAgentConfig;
 use common::client;
 use phi_agent::{OutputFormat, build_system_prompt, create_stdout_renderer};
@@ -33,15 +35,19 @@ async fn main() -> anyhow::Result<()> {
     println!("🤖 Multi-Agent mode enabled. The LLM can spawn sub-agents to decompose tasks.\n");
 
     let session = runtime.create_session().await;
-    let mut renderer =
-        create_stdout_renderer(&OutputFormat::Terminal { show_thinking: true, show_tool_args: true, color: true });
+    let renderer = Arc::new(Mutex::new(create_stdout_renderer(&OutputFormat::Terminal {
+        show_thinking: true,
+        show_tool_args: true,
+        color: true,
+    })));
+    let renderer_clone = renderer.clone();
 
     let _outcome = runtime
         .run_turn(
             session,
             "Research two topics in parallel: (1) Rust async programming best practices, \
              (2) tokio runtime internals. For each topic, summarize the key points in 2-3 bullet points.",
-            |event| renderer.render(event),
+            move |event| renderer_clone.lock().unwrap().render(event),
         )
         .await?;
 

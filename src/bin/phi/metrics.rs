@@ -6,7 +6,7 @@ use anyhow::Result;
 use phi_agent::SessionMetrics;
 use phi_telemetry::{SessionOutcome, TurnOutcome, list_all_metrics, load_metrics};
 
-use crate::args::{CliArgs, MetricsCmd};
+use crate::args::{CliArgs, MetricsCmd, MetricsSort, OutputFormatArg};
 use crate::run::truncate_str;
 
 // ── Metrics commands ──
@@ -16,10 +16,41 @@ pub fn handle_metrics(cmd: &MetricsCmd, args: &CliArgs) -> Result<()> {
     let log_dir_path = std::path::PathBuf::from(&log_dir);
 
     match cmd {
-        MetricsCmd::List => {
-            let summaries = list_all_metrics(&log_dir_path)?;
+        MetricsCmd::List { sort } => {
+            let mut summaries = list_all_metrics(&log_dir_path)?;
+
+            // Default order is whatever list_all_metrics produced (date
+            // ascending); the other keys sort descending — biggest first —
+            // with created_at as a stable tiebreaker.
+            match sort {
+                MetricsSort::Date => {},
+                MetricsSort::Turns => {
+                    summaries.sort_by(|a, b| b.total_turns.cmp(&a.total_turns).then(a.created_at.cmp(&b.created_at)));
+                },
+                MetricsSort::Chars => {
+                    summaries.sort_by(|a, b| b.total_chars.cmp(&a.total_chars).then(a.created_at.cmp(&b.created_at)));
+                },
+                MetricsSort::Outcome => {
+                    let rank = |o: &SessionOutcome| match o {
+                        SessionOutcome::Failed => 0,
+                        SessionOutcome::MaxTurns => 1,
+                        SessionOutcome::Cancelled => 2,
+                        SessionOutcome::Completed => 3,
+                    };
+                    summaries
+                        .sort_by(|a, b| rank(&a.outcome).cmp(&rank(&b.outcome)).then(a.created_at.cmp(&b.created_at)));
+                },
+            }
+
             if summaries.is_empty() {
                 println!("No sessions found.");
+                return Ok(());
+            }
+
+            // JSON consumers get the raw summaries; the table below is for
+            // terminals only.
+            if args.format == OutputFormatArg::Json {
+                println!("{}", serde_json::to_string_pretty(&summaries)?);
                 return Ok(());
             }
 
@@ -74,6 +105,39 @@ pub fn handle_metrics(cmd: &MetricsCmd, args: &CliArgs) -> Result<()> {
                 None => {
                     println!("No sessions found.");
                 },
+            }
+        },
+
+        MetricsCmd::Export { output } => {
+            let sessions_dir = log_dir_path.join("sessions");
+            if !sessions_dir.exists() {
+                anyhow::bail!("No metrics found at {} (no sessions have been logged yet).", sessions_dir.display());
+            }
+
+            // Full detail, not just summaries: export exists so analysts can
+            // reconstruct per-turn behaviour offline.
+            let mut all = Vec::new();
+            for entry in std::fs::read_dir(&sessions_dir)? {
+                let path = entry?.path();
+                if path.is_dir()
+                    && let Ok(metrics) = load_metrics(&path)
+                {
+                    all.push(metrics);
+                }
+            }
+            all.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+
+            if all.is_empty() {
+                anyhow::bail!("No session metrics found in {}.", sessions_dir.display());
+            }
+
+            let json = serde_json::to_string_pretty(&all)?;
+            match output {
+                Some(path) => {
+                    std::fs::write(path, json.as_bytes())?;
+                    println!("  Exported {} session(s) to {}", all.len(), path.display());
+                },
+                None => println!("{}", json),
             }
         },
     }
@@ -175,18 +239,35 @@ pub fn format_number(n: u64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::format_number;
 
     #[test]
-    fn test_format_number() {
+    fn small_numbers_are_unformatted() {
         assert_eq!(format_number(0), "0");
         assert_eq!(format_number(42), "42");
         assert_eq!(format_number(999), "999");
-        assert_eq!(format_number(1000), "1.0K");
-        assert_eq!(format_number(1500), "1.5K");
+    }
+
+    #[test]
+    fn thousands_use_k_suffix_with_one_decimal() {
+        assert_eq!(format_number(1_000), "1.0K");
+        assert_eq!(format_number(1_500), "1.5K");
         assert_eq!(format_number(999_999), "1000.0K");
+    }
+
+    #[test]
+    fn millions_use_m_suffix_with_one_decimal() {
         assert_eq!(format_number(1_000_000), "1.0M");
         assert_eq!(format_number(2_500_000), "2.5M");
     }
-}
 
+    #[test]
+    fn boundaries_land_in_the_right_bucket() {
+        // Just below and exactly at each threshold: the buckets must not
+        // leak into each other.
+        assert_eq!(format_number(999), "999"); // still plain
+        assert_eq!(format_number(1_000), "1.0K"); // K starts here
+        assert_eq!(format_number(999_999), "1000.0K"); // still K
+        assert_eq!(format_number(1_000_000), "1.0M"); // M starts here
+    }
+}

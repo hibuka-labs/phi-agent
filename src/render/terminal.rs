@@ -4,6 +4,8 @@ use std::io::{self, Write};
 
 use agent_base::{AgentResult, PlanStepStatus, RuntimeEvent};
 
+use agent_works::compression::{CompressionEvent, CompressionTrigger};
+
 use crate::render::EventRenderer;
 
 /// Rich terminal renderer — colors, emoji, formatted output.
@@ -19,6 +21,9 @@ pub struct TerminalRenderer {
     turn_start: Option<std::time::Instant>,
     last_assistant_text: String,
     last_was_thought: bool,
+    compression_started_at: Option<std::time::Instant>,
+    last_progress_chars: usize,
+    first_output_logged: bool,
 }
 
 impl TerminalRenderer {
@@ -38,6 +43,9 @@ impl TerminalRenderer {
             turn_start: None,
             last_assistant_text: String::new(),
             last_was_thought: false,
+            compression_started_at: None,
+            last_progress_chars: 0,
+            first_output_logged: false,
         }
     }
 
@@ -92,6 +100,13 @@ impl EventRenderer for TerminalRenderer {
 
         match &event {
             RuntimeEvent::ThoughtDelta { text, .. } => {
+                if !self.first_output_logged
+                    && let Some(start) = self.turn_start
+                {
+                    let ttft_ms = start.elapsed().as_millis();
+                    tracing::info!(ttft_ms = ttft_ms as u64, "first visible output (thought)");
+                    self.first_output_logged = true;
+                }
                 if self.show_thinking {
                     match &agent_prefix {
                         Some(prefix) => self.write_text(&format!("{} {}", prefix, self.dim(text)))?,
@@ -101,6 +116,13 @@ impl EventRenderer for TerminalRenderer {
                 self.last_was_thought = true;
             },
             RuntimeEvent::TextDelta { text, .. } => {
+                if !self.first_output_logged
+                    && let Some(start) = self.turn_start
+                {
+                    let ttft_ms = start.elapsed().as_millis();
+                    tracing::info!(ttft_ms = ttft_ms as u64, "first visible output");
+                    self.first_output_logged = true;
+                }
                 if self.last_was_thought {
                     let _ = writeln!(self.writer);
                     self.last_was_thought = false;
@@ -163,6 +185,102 @@ impl EventRenderer for TerminalRenderer {
                 None => self.write_line(&format!("\n{} Cancelled", self.yellow("⚠")))?,
             },
             RuntimeEvent::RunFinished { .. } => {},
+            RuntimeEvent::UserEvent { event: agent_base::UserEvent::Progress { text }, .. } => {
+                self.write_line(&format!("\r\x1b[K{}", self.green(text)))?;
+            },
+            RuntimeEvent::UserEvent { event, .. }
+                if matches!(
+                    CompressionEvent::from_user_event(event),
+                    Some(CompressionEvent::Preparing { .. })
+                        | Some(CompressionEvent::Started { .. })
+                        | Some(CompressionEvent::Progress { .. })
+                        | Some(CompressionEvent::Completed { .. })
+                        | Some(CompressionEvent::Failed { .. })
+                ) =>
+            {
+                // Guard above already confirmed this is a valid CompressionEvent.
+                if let Some(ev) = CompressionEvent::from_user_event(event) {
+                    match ev {
+                        CompressionEvent::Preparing { tokens_before, msg_count, trigger, .. } => {
+                            self.compression_started_at = Some(std::time::Instant::now());
+                            // Auto: suppress — Started event already shows the same info.
+                            // Manual (/compact): show since there is no Started event before it.
+                            if matches!(trigger, CompressionTrigger::Manual) {
+                                self.write_line(&format!(
+                                    "\r\x1b[K{}",
+                                    self.yellow(&format!(
+                                        "⏳ Manual compression (~{} tokens, {} messages)...",
+                                        tokens_before, msg_count
+                                    ))
+                                ))?;
+                            }
+                        },
+                        CompressionEvent::Started { tokens_before, msg_count, .. } => {
+                            self.compression_started_at = Some(std::time::Instant::now());
+                            self.last_progress_chars = 0;
+                            self.write_line(&format!(
+                                "\r\x1b[K{}",
+                                self.yellow(&format!(
+                                    "⏳ Compressing context (~{} tokens, {} messages)... (0.0s)",
+                                    tokens_before, msg_count
+                                ))
+                            ))?;
+                        },
+                        CompressionEvent::Progress { chars, .. } => {
+                            let elapsed = self
+                                .compression_started_at
+                                .map(|t| format!("{:.1}s", t.elapsed().as_secs_f64()))
+                                .unwrap_or_default();
+                            let suffix = if elapsed.is_empty() { String::new() } else { format!(" ({elapsed})") };
+                            if chars == 0 {
+                                self.write_line(&format!(
+                                    "\r\x1b[K{}",
+                                    self.yellow(&format!("⏳ Connecting to LLM...{suffix}"))
+                                ))?;
+                            } else {
+                                // Deduplicate: only log every 200 chars to reduce noise.
+                                if chars.saturating_sub(self.last_progress_chars) >= 200 {
+                                    self.last_progress_chars = chars;
+                                    self.write_line(&format!(
+                                        "\r\x1b[K{}",
+                                        self.yellow(&format!("⏳ Summarizing... ({} chars){suffix}", chars))
+                                    ))?;
+                                }
+                            }
+                        },
+                        CompressionEvent::Completed {
+                            tokens_before,
+                            tokens_after,
+                            reduction_pct,
+                            msg_count_before,
+                            msg_count_after,
+                            ..
+                        } => {
+                            let elapsed = self
+                                .compression_started_at
+                                .map(|t| format!("{:.1}s", t.elapsed().as_secs_f64()))
+                                .unwrap_or_default();
+                            let suffix = if elapsed.is_empty() { String::new() } else { format!(" in {elapsed}") };
+                            let icon = if reduction_pct < 0 { "⚠️" } else { "✅" };
+                            self.write_line(&format!(
+                                "\r\x1b[K{}",
+                                self.green(&format!(
+                                    "{} Context compressed ({} → {} tokens, {}%, {} → {} messages){suffix}",
+                                    icon, tokens_before, tokens_after, reduction_pct, msg_count_before, msg_count_after
+                                ))
+                            ))?;
+                            self.compression_started_at = None;
+                        },
+                        CompressionEvent::Failed { error, .. } => {
+                            self.write_line(&format!(
+                                "\r\x1b[K{}",
+                                self.yellow(&format!("❌ Compression failed: {}", error))
+                            ))?;
+                            self.compression_started_at = None;
+                        },
+                    }
+                }
+            },
             RuntimeEvent::UserEvent { .. } => {},
             RuntimeEvent::Checkpoint { .. } => {},
         }
@@ -190,6 +308,7 @@ impl EventRenderer for TerminalRenderer {
         self.turn_start = None;
         self.last_assistant_text.clear();
         self.last_was_thought = false;
+        self.first_output_logged = false;
 
         Ok(())
     }
@@ -199,6 +318,7 @@ impl EventRenderer for TerminalRenderer {
 mod tests {
     use super::*;
     use agent_base::{ApprovalRequest, PlanItem, PlanStepStatus, RiskLevel, SessionId, UserEvent};
+    use agent_works::compression::{CompressionEvent, CompressionTrigger};
     use std::io::Write;
     use std::sync::{Arc, Mutex};
 
@@ -471,7 +591,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_user_event_progress_no_output() {
+    fn test_render_user_event_progress_shows_text() {
         let out = render_one(
             true,
             true,
@@ -483,7 +603,184 @@ mod tests {
                 trace_id: None,
             },
         );
-        assert!(out.is_empty());
+        assert!(out.contains("loading..."));
+    }
+
+    #[test]
+    fn test_render_compression_preparing_auto_suppressed() {
+        // Auto Preparing is suppressed — Started event already shows the same info.
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: CompressionEvent::Preparing {
+                    session_id: 1,
+                    tokens_before: 4200,
+                    msg_count: 8,
+                    trigger: CompressionTrigger::Auto,
+                }
+                .into_user_event(),
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.is_empty(), "Auto Preparing should be suppressed, got: {out}");
+    }
+
+    #[test]
+    fn test_render_compression_preparing_manual() {
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: CompressionEvent::Preparing {
+                    session_id: 1,
+                    tokens_before: 5000,
+                    msg_count: 10,
+                    trigger: CompressionTrigger::Manual,
+                }
+                .into_user_event(),
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.contains("Manual compression"));
+        assert!(out.contains("5000"));
+    }
+
+    #[test]
+    fn test_render_compression_started_event() {
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: CompressionEvent::Started {
+                    session_id: 1,
+                    tokens_before: 5000,
+                    msg_count: 8,
+                    trigger: CompressionTrigger::Auto,
+                }
+                .into_user_event(),
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.contains("Compressing"));
+        assert!(out.contains("5000"));
+    }
+
+    #[test]
+    fn test_render_compression_progress_connecting() {
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: CompressionEvent::Progress { session_id: 1, chars: 0 }.into_user_event(),
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.contains("Connecting"));
+    }
+
+    #[test]
+    fn test_render_compression_progress_summarizing() {
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: CompressionEvent::Progress { session_id: 1, chars: 755 }.into_user_event(),
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.contains("Summarizing"));
+        assert!(out.contains("755"));
+    }
+
+    #[test]
+    fn test_render_compression_completed_event() {
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: CompressionEvent::Completed {
+                    session_id: 1,
+                    tokens_before: 5000,
+                    tokens_after: 3500,
+                    reduction_pct: 30,
+                    msg_count_before: 8,
+                    msg_count_after: 6,
+                    trigger: CompressionTrigger::Auto,
+                }
+                .into_user_event(),
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.contains("compressed"));
+        assert!(out.contains("30%"));
+        assert!(out.contains("3500"));
+    }
+
+    #[test]
+    fn test_render_compression_failed_event() {
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: CompressionEvent::Failed {
+                    session_id: 1,
+                    error: "LLM timeout".into(),
+                    trigger: CompressionTrigger::Auto,
+                }
+                .into_user_event(),
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.contains("failed"));
+        assert!(out.contains("LLM timeout"));
+    }
+
+    #[test]
+    fn test_render_compression_completed_negative_pct() {
+        let out = render_one(
+            true,
+            true,
+            true,
+            RuntimeEvent::UserEvent {
+                session_id: session_id(),
+                event: CompressionEvent::Completed {
+                    session_id: 1,
+                    tokens_before: 4000,
+                    tokens_after: 4200,
+                    reduction_pct: -5,
+                    msg_count_before: 10,
+                    msg_count_after: 8,
+                    trigger: CompressionTrigger::Auto,
+                }
+                .into_user_event(),
+                agent_id: None,
+                trace_id: None,
+            },
+        );
+        assert!(out.contains("⚠️"));
+        assert!(out.contains("-5%"));
     }
 
     // ── finish_turn tests ──

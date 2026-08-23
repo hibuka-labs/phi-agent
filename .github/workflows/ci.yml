@@ -137,4 +137,10 @@ jobs:
       # 93.76% line coverage (cargo llvm-cov --lib --all-features). Threshold
       # is set at 85 to ratchet the floor while leaving headroom for CI variance.
       - name: Coverage gate
-        run: cargo llvm-cov --lib --all-features --fail-under-lines 85
+        run: cargo llvm-cov --lib --all-features --fail-under-lines 85 --lcov --output-path lcov.info
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info

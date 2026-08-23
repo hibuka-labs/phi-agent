@@ -11,6 +11,8 @@
 //! Usage:
 //!   cargo run --example window_memory
 
+use std::sync::{Arc, Mutex};
+
 use agent_base::{AgentResult, ChatMessage, Middleware, PreLlmCtx};
 use async_trait::async_trait;
 use phi_agent::{PhiAgent, PhiAgentConfig, ReasoningEffort, SafetyConfig, base_agent_builder, build_system_prompt};
@@ -91,14 +93,19 @@ async fn main() -> anyhow::Result<()> {
     )?;
 
     let session = agent.create_session().await;
-    let mut renderer = phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
+    let renderer = Arc::new(Mutex::new(phi_agent::create_stdout_renderer(&phi_agent::OutputFormat::Terminal {
         show_thinking: false,
         show_tool_args: false,
         color: true,
-    });
+    })));
+    let renderer_clone = renderer.clone();
 
     println!("=== Sliding Window Memory demo ===\n");
-    agent.run_turn(session, "Count from 1 to 3, one number per line.", |event| renderer.render(event)).await?;
+    agent
+        .run_turn(session, "Count from 1 to 3, one number per line.", move |event| {
+            renderer_clone.lock().unwrap().render(event)
+        })
+        .await?;
 
     println!("\n=== Window memory demonstrated ===");
     Ok(())

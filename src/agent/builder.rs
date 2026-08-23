@@ -4,13 +4,79 @@
 //! Returns a pre-configured [`agent_works::AgentBuilder`]; callers then register
 //! tools and approval handlers on top.
 
-#[cfg(feature = "file")]
+#[cfg(any(feature = "file", feature = "skill"))]
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use agent_base::{ConsecutiveFailureRecovery, Language, ReasoningConfig, ReasoningEffort, UpdatePlanTool};
 
-use crate::agent::compression::SummarizingMiddleware;
+#[cfg(feature = "compression")]
+use agent_works::compression::{CompressionConfig, CompressionMiddleware, ContextCompactor};
+
+/// Module-level compactor handle, set once by `base_agent_builder_with_excludes`
+/// when the `compression` feature is enabled.  Shared cache with the middleware.
+///
+/// **Limitation**: This is a process-global static, so it only works correctly
+/// for single-agent processes (the normal phi-agent use case).  Multi-agent
+/// processes that run multiple independent agents in the same process would
+/// need a per-agent compactor instead.
+#[cfg(feature = "compression")]
+static COMPACTOR: std::sync::Mutex<Option<ContextCompactor>> = std::sync::Mutex::new(None);
+
+/// Clear the compression summary cache.
+///
+/// Called by the `/compact` REPL command.  The next turn will re-summarise
+/// (if compression triggers).  No-op when `compression` is disabled.
+pub fn clear_compression_cache() {
+    #[cfg(feature = "compression")]
+    {
+        if let Ok(guard) = COMPACTOR.lock()
+            && let Some(ref compactor) = *guard
+        {
+            compactor.clear_cache();
+            tracing::info!("compression cache cleared");
+            return;
+        }
+        tracing::warn!("clear_compression_cache: no compactor registered");
+    }
+}
+
+/// Run `compact_session` on the current session: read → compress → write back.
+///
+/// - `Ok(Some(true))` — compression applied, session rewritten.
+/// - `Ok(Some(false))` — session is below the threshold, no-op.
+/// - `Ok(None)` — compression not available (feature disabled or no compactor registered).
+/// - `Err(...)` — actual error (write-back failure, concurrent modification, etc.).
+///
+/// When `emit_fn` is provided, lifecycle events
+/// (`CompressionEvent::Preparing/Started/Progress/Completed`) with
+/// `CompressionTrigger::Manual` are emitted through it.
+pub async fn run_compact_session(
+    runtime: &agent_base::AgentRuntime,
+    session_id: &agent_base::SessionId,
+    emit_fn: Option<std::sync::Arc<dyn Fn(agent_base::UserEvent) + Send + Sync>>,
+) -> agent_base::AgentResult<Option<bool>> {
+    #[cfg(feature = "compression")]
+    {
+        // Clone the handle so we can drop the lock before the async call.
+        let handle = {
+            let guard = COMPACTOR
+                .lock()
+                .map_err(|e| agent_base::AgentError::internal(format!("COMPACTOR lock poisoned: {e}")))?;
+            guard.as_ref().map(|c| c.clone_handle())
+        };
+        if let Some(compactor) = handle {
+            return compactor.compact_session(runtime, session_id, emit_fn).await.map(Some);
+        }
+        tracing::warn!("run_compact_session: no compactor registered");
+        Ok(None)
+    }
+    #[cfg(not(feature = "compression"))]
+    {
+        let _ = (runtime, session_id, emit_fn);
+        Ok(None)
+    }
+}
 
 /// Returns an [`agent_works::AgentBuilder`] with sensible defaults:
 /// - English
@@ -20,6 +86,7 @@ use crate::agent::compression::SummarizingMiddleware;
 /// - Session limits (50 sessions / 100 turns per session / 50k per-message cap)
 /// - Per-run react-loop cap (200 iterations for one user input)
 /// - LLM-based context compression for long tool-heavy conversations
+///   (uses `CompressionMiddleware` from agent-works when `compression` feature is enabled)
 /// - File tools (read_file / write_file / edit_file / list_files) — enabled by default
 /// - Plan checklist (update_plan) — display-only progress tracking, enabled by default
 /// - Skills injected into system prompt (not as tools — LLM uses read_file;
@@ -51,6 +118,18 @@ pub fn base_agent_builder(llm_client: Arc<dyn agent_base::StreamClient>) -> agen
 pub fn base_agent_builder_with_excludes(
     llm_client: Arc<dyn agent_base::StreamClient>,
     file_excludes: Vec<String>,
+) -> agent_works::AgentBuilder {
+    base_agent_builder_with_options(llm_client, file_excludes, None)
+}
+
+/// Like [`base_agent_builder_with_excludes`], but also lets the consumer
+/// override the [`CompressionConfig`] used by the context-compression
+/// middleware.  Pass `None` to use the defaults.
+#[allow(unused_mut)]
+pub fn base_agent_builder_with_options(
+    llm_client: Arc<dyn agent_base::StreamClient>,
+    file_excludes: Vec<String>,
+    compression_config: Option<CompressionConfig>,
 ) -> agent_works::AgentBuilder {
     // Tool-output cap (default 4000 chars). Tune via PHI_MAX_TOOL_OUTPUT_CHARS for large
     // outputs (HTML, base64 images, long lists). The engine REJECTS output that exceeds
@@ -84,11 +163,20 @@ pub fn base_agent_builder_with_excludes(
         .execution_max_turns(200)
         .max_message_tokens(50_000)
         .max_tool_output_chars(max_tool_output_chars)
-        .error_recovery(Arc::new(ConsecutiveFailureRecovery::new(3)))
-        // Summarise the earlier part of long conversations so per-call LLM context
-        // stays bounded (see compression.rs). Override via the returned builder, or
-        // build your own AgentBuilder to opt out.
-        .middleware(SummarizingMiddleware::new(llm_client));
+        .error_recovery(Arc::new(ConsecutiveFailureRecovery::new(3)));
+
+    // Context compression: use CompressionMiddleware from agent-works
+    // (hybrid retention + stable-prefix cache + handoff summary).
+    #[cfg(feature = "compression")]
+    {
+        let compactor = ContextCompactor::new(llm_client.clone(), compression_config.unwrap_or_default());
+        // Store a cloned handle (shared cache) for the /compact command.
+        let handle = compactor.clone_handle();
+        if let Ok(mut guard) = COMPACTOR.lock() {
+            *guard = Some(handle);
+        }
+        builder = builder.middleware(CompressionMiddleware::from_compactor(compactor));
+    }
 
     // ── File tools (opt-in via `file` feature) ──
     #[cfg(feature = "file")]
@@ -118,7 +206,7 @@ pub fn base_agent_builder_with_excludes(
     }
 
     // ── Skills: prompt-injection mode (uses read_file, no skill-specific tools) ──
-    #[cfg(feature = "file")]
+    #[cfg(feature = "skill")]
     {
         use agent_works::skill::Skill;
         use agent_works::skill::prompt_skill::PromptSkill;
@@ -154,7 +242,7 @@ pub fn base_agent_builder_with_excludes(
 }
 
 /// Resolve the user's home directory for `~/.claude/skills/`.
-#[cfg(feature = "file")]
+#[cfg(feature = "skill")]
 fn dirs_next() -> std::path::PathBuf {
     std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))

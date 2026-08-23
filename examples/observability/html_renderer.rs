@@ -13,6 +13,7 @@
 mod common;
 
 use std::io::{self, Write};
+use std::sync::{Arc, Mutex};
 
 use phi_agent::{
     AgentError, AgentResult, EventRenderer, PhiAgent, PhiAgentConfig, PlanStepStatus, ReasoningEffort, RuntimeEvent,
@@ -113,13 +114,18 @@ async fn main() -> anyhow::Result<()> {
     )?;
 
     let session = agent.create_session().await;
-    let mut renderer = HtmlRenderer::new(Box::new(io::stdout()));
+    let renderer = Arc::new(Mutex::new(HtmlRenderer::new(Box::new(io::stdout()))));
+    let renderer_clone = renderer.clone();
 
     println!("<!doctype html>\n<html>\n<head><meta charset=\"utf-8\"><title>Agent Session</title></head>\n<body>\n");
 
-    agent.run_turn(session, "Hello! Introduce yourself in one sentence.", |event| renderer.render(event)).await?;
+    agent
+        .run_turn(session, "Hello! Introduce yourself in one sentence.", move |event| {
+            renderer_clone.lock().unwrap().render(event)
+        })
+        .await?;
 
-    renderer.finish_session()?;
+    renderer.lock().unwrap().finish_session()?;
 
     Ok(())
 }

@@ -153,7 +153,7 @@ impl PhiAgent {
     /// ```
     pub async fn run_turn<F>(&self, session_id: SessionId, query: &str, on_event: F) -> AgentResult<RunOutcome>
     where
-        F: FnMut(RuntimeEvent) -> AgentResult<()> + Send,
+        F: FnMut(RuntimeEvent) -> AgentResult<()> + Send + 'static,
     {
         self.runtime.run_turn(session_id, query, on_event).await
     }
