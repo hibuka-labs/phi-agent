@@ -174,7 +174,76 @@ mod tests {
         let cloned = cfg.clone();
         assert_eq!(cloned.api_key, "sk-test");
         assert_eq!(cloned.model, "gpt-4");
-        // LlmConfig is Debug — verify it doesn't panic
         let _ = format!("{:?}", cfg);
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+
+    struct EnvGuard {
+        keys: Vec<&'static str>,
+        saved: Vec<Option<String>>,
+    }
+
+    impl EnvGuard {
+        fn new(keys: &[&'static str]) -> Self {
+            let saved: Vec<Option<String>> = keys.iter().map(|k| std::env::var(k).ok()).collect();
+            for k in keys {
+                unsafe { std::env::remove_var(k) };
+            }
+            Self { keys: keys.to_vec(), saved }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for (i, k) in self.keys.iter().enumerate() {
+                unsafe { std::env::remove_var(k) };
+                if let Some(ref v) = self.saved[i] {
+                    unsafe { std::env::set_var(k, v) };
+                }
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn resolve_llm_config_never_panics(
+            model in proptest::option::of("[a-zA-Z0-9_.-]{0,50}"),
+            base_url in proptest::option::of("https://[a-z]{1,20}\\.example\\.com/v[0-9]"),
+        ) {
+            let vars = &["LLM_API_KEY", "OPENAI_API_KEY", "LLM_MODEL", "OPENAI_MODEL", "LLM_BASE_URL", "OPENAI_BASE_URL"];
+            let _guard = EnvGuard::new(vars);
+            unsafe { std::env::set_var("LLM_API_KEY", "sk-proptest"); }
+            let _ = resolve_llm_config(model.as_deref(), base_url.as_deref());
+        }
+
+        #[test]
+        fn cli_model_takes_priority_over_env(
+            cli_model in "[a-zA-Z0-9_-]{1,30}",
+            env_model in "[a-zA-Z0-9_-]{1,30}",
+        ) {
+            let vars = &["LLM_API_KEY", "OPENAI_API_KEY", "LLM_MODEL", "OPENAI_MODEL", "LLM_BASE_URL", "OPENAI_BASE_URL"];
+            let _guard = EnvGuard::new(vars);
+            unsafe { std::env::set_var("LLM_API_KEY", "sk-test"); }
+            unsafe { std::env::set_var("LLM_MODEL", &env_model); }
+            let cfg = resolve_llm_config(Some(&cli_model), None).unwrap();
+            proptest::prop_assert_eq!(cfg.model, cli_model);
+        }
+
+        #[test]
+        fn cli_base_url_takes_priority_over_env(
+            cli_url in "https://[a-z]{1,15}\\.example\\.com/v[0-9]",
+            env_url in "https://[a-z]{1,15}\\.example\\.com/v[0-9]",
+        ) {
+            let vars = &["LLM_API_KEY", "OPENAI_API_KEY", "LLM_MODEL", "OPENAI_MODEL", "LLM_BASE_URL", "OPENAI_BASE_URL"];
+            let _guard = EnvGuard::new(vars);
+            unsafe { std::env::set_var("LLM_API_KEY", "sk-test"); }
+            unsafe { std::env::set_var("LLM_BASE_URL", &env_url); }
+            let cfg = resolve_llm_config(None, Some(&cli_url)).unwrap();
+            proptest::prop_assert_eq!(cfg.base_url, cli_url);
+        }
     }
 }

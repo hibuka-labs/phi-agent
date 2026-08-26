@@ -398,3 +398,27 @@ mod tests {
         assert_eq!(back.requirements, tm.requirements);
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+
+    proptest::proptest! {
+        #[test]
+        fn incoming_message_deser_never_panics(json in ".*") {
+            let _ = serde_json::from_str::<IncomingMessage>(&json);
+        }
+
+        #[test]
+        fn incoming_message_unknown_type_returns_err(type_name in "[a-z_]{1,20}") {
+            let known = ["register_tool", "create_session", "run", "tool_result", "cancel", "list_tools"];
+            let json = format!(r#"{{"type":"{}","name":"x","description":"d","parameters":{{}},"session_id":"s","query":"q","call_id":"c","summary":"s"}}"#, type_name);
+            let result = serde_json::from_str::<IncomingMessage>(&json);
+            if known.contains(&type_name.as_str()) {
+                proptest::prop_assert!(result.is_ok(), "known type '{}' should deserialize", type_name);
+            } else {
+                proptest::prop_assert!(result.is_err(), "unknown type '{}' should fail", type_name);
+            }
+        }
+    }
+}

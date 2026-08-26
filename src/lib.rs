@@ -29,10 +29,9 @@ pub mod session;
 // For the bare runtime builder, use agent_base::AgentBuilder directly.
 pub use agent_base::{
     AgentError, AgentResult, AgentRuntime, ApprovalDecision, ApprovalHandler, ApprovalRequest,
-    ConsecutiveFailureRecovery, Content, FinishReason, LlmClient, Middleware, OpenAiClient, PlanItem, PlanStepStatus,
-    PostLlmCtx, PreLlmCtx, ReasoningConfig, ReasoningEffort, RiskLevel, RunOutcome, RuntimeEvent, SafetyConfig,
-    SessionId, Tool, ToolContext, ToolMetadata, ToolPolicy, TurnFactMiddleware, TurnToolLimitMiddleware,
-    UpdatePlanTool, UserMessageCtx,
+    ConsecutiveFailureRecovery, Content, FinishReason, Middleware, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx,
+    ReasoningConfig, ReasoningEffort, RiskLevel, RunOutcome, RuntimeEvent, SafetyConfig, SessionId, Tool, ToolContext,
+    ToolMetadata, ToolPolicy, TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
 };
 pub use agent_works::AgentBuilder;
 
@@ -71,3 +70,54 @@ pub use session::{
     SessionContext, SnapshotInfo, cleanup_expired_sessions, create_snapshot, delete_snapshot, list_snapshots,
     resolve_session, restore_snapshot, validate_session_id, validate_snapshot_name,
 };
+
+/// Format a number with K/M suffixes for display.
+///
+/// - `n < 1_000` → plain number
+/// - `1_000 <= n < 1_000_000` → `{:.1}K`
+/// - `n >= 1_000_000` → `{:.1}M`
+pub fn format_number(n: u64) -> String {
+    if n >= 1_000_000 {
+        format!("{:.1}M", n as f64 / 1_000_000.0)
+    } else if n >= 1_000 {
+        format!("{:.1}K", n as f64 / 1_000.0)
+    } else {
+        n.to_string()
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+
+    proptest::proptest! {
+        #[test]
+        fn format_number_never_panics(n: u64) {
+            let _ = format_number(n);
+        }
+
+        #[test]
+        fn format_number_correct_suffix(n: u64) {
+            let s = format_number(n);
+            if n < 1_000 {
+                proptest::prop_assert_eq!(s, n.to_string());
+            } else if n < 1_000_000 {
+                proptest::prop_assert!(s.ends_with('K'), "expected K suffix for {}, got '{}'", n, s);
+            } else {
+                proptest::prop_assert!(s.ends_with('M'), "expected M suffix for {}, got '{}'", n, s);
+            }
+        }
+
+        #[test]
+        fn format_number_boundary_correct(n in 0u64..1_001) {
+            // At the exact boundary (1000), must switch to K
+            let s = format_number(n);
+            if n < 1_000 {
+                proptest::prop_assert!(!s.contains('K'));
+                proptest::prop_assert!(!s.contains('M'));
+            } else {
+                proptest::prop_assert!(s.ends_with('K'));
+            }
+        }
+    }
+}
