@@ -59,10 +59,13 @@ pub use agent::{
     PhiAgent, PhiAgentConfig, base_agent_builder, base_agent_builder_with_excludes, base_agent_builder_with_options,
     clear_compression_cache, run_compact_session,
 };
+pub use agent_works::prompt::{
+    DynamicToolsFragment, EnvironmentFragment, FragmentContext, PromptFragment, compose_fragments,
+};
 pub use cli::{ApprovalMode, AutoApprovalHandler};
 pub use config::{LlmConfig, resolve_llm_config};
 pub use event_log::{event_to_jsonl, event_to_value, save_turn_log};
-pub use prompt::{build_system_prompt, build_system_prompt_cn};
+pub use prompt::{build_system_prompt, build_system_prompt_cn, build_system_prompt_with_fragments};
 pub use render::{
     EventRenderer, JsonStreamRenderer, NullRenderer, OutputFormat, create_renderer, create_stdout_renderer,
 };

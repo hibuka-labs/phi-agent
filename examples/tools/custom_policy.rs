@@ -23,7 +23,7 @@ use agent_base::llm_trait::response::{FinishReason, ToolCall};
 use agent_base::llm_trait::{Capabilities, ChatRequest, ChatResponse, ChatStream, LlmError, LlmProvider, ProviderInfo};
 use agent_base::{
     AgentResult, ApprovalRequest, Content, Middleware, PostLlmCtx, RuntimeEvent, StreamChunk, Tool, ToolContext,
-    ToolPolicy,
+    ToolDecision, ToolPolicy,
 };
 use async_trait::async_trait;
 use futures_core::Stream;
@@ -172,11 +172,11 @@ impl ToolPolicy for DemoPolicy {
         None
     }
 
-    /// 2. before_call — check before execution, return Err to abort
-    fn before_call(&self, tool_name: &str, _args: &Value, _ctx: &ToolContext) -> AgentResult<()> {
+    /// 2. before_call — check before execution, return Block to abort
+    fn before_call(&self, tool_name: &str, _args: &Value, _ctx: &ToolContext) -> AgentResult<ToolDecision> {
         self.before_count.fetch_add(1, Ordering::SeqCst);
         println!("  [ToolPolicy] before_call('{tool_name}') — about to execute");
-        Ok(())
+        Ok(ToolDecision::Proceed)
     }
 
     /// 3. after_call — callback after successful execution

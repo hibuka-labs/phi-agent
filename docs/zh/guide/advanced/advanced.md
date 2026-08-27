@@ -76,6 +76,7 @@ builder = builder.middleware(LoggingMiddleware);
 
 ```rust
 use phi_agent::{AgentResult, ApprovalRequest, Content, RiskLevel, ToolContext, ToolPolicy};
+use agent_base::ToolDecision;
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -98,10 +99,13 @@ impl ToolPolicy for RiskAwarePolicy {
         None // 安全命令免审批
     }
 
-    // 2. 工具执行前的同步检查——返回 Err 可中断执行
-    fn before_call(&self, tool_name: &str, _args: &Value, _ctx: &ToolContext) -> AgentResult<()> {
+    // 2. 工具执行前的同步检查——返回 ToolDecision
+    fn before_call(
+        &self, tool_name: &str, args: &Value, _ctx: &ToolContext,
+    ) -> AgentResult<ToolDecision> {
         tracing::info!("即将执行工具：{tool_name}");
-        Ok(())
+        // Proceed 用原始参数执行，Block 中断，Modify 替换参数
+        Ok(ToolDecision::Proceed)
     }
 
     // 3. 工具执行成功后的同步回调——用于审计、埋点
@@ -116,7 +120,17 @@ impl ToolPolicy for RiskAwarePolicy {
 builder = builder.tool_policy(Arc::new(RiskAwarePolicy));
 ```
 
-执行流程：`evaluate_approval` → （如需审批则等待用户）→ `before_call` → `tool.call()` → `after_call`。`before_call` 返回 `Err` 时工具被中断，`after_call` 不会执行。
+执行流程：`evaluate_approval` → （如需审批则等待用户）→ `before_call` → `tool.call()` → `after_call`。
+
+`before_call` 返回 `ToolDecision`：
+
+| 变体 | 效果 |
+|------|------|
+| `ToolDecision::Proceed` | 使用原始参数执行 |
+| `ToolDecision::Block(msg)` | 中断调用；`msg` 会发送给 LLM |
+| `ToolDecision::Modify(new_args)` | 使用替换参数执行 |
+
+`Modify` 适用于自动注入标志（如 `--no-color`）、路径规范化、或在执行前清理输入。
 
 > 💡 完整可运行示例：[`examples/tools/custom_policy.rs`](https://github.com/hibuka-labs/phi-agent/blob/master/examples/tools/custom_policy.rs)，同时演示了自定义 Middleware 和 ToolPolicy。执行 `cargo run --example custom_policy` 即可运行，无需 API key。
 
@@ -257,6 +271,51 @@ builder = builder.error_recovery(Arc::new(
     ConsecutiveFailureRecovery::new(3)
 ));
 ```
+
+## 并行工具执行
+
+当 LLM 在单轮返回多个工具调用时，它们会通过 `join_all` **并发执行**。延迟从 `sum(各工具耗时)` 降低为 `max(各工具耗时)`。
+
+- 审批阶段顺序执行（批量审批所有调用）
+- 审批通过后所有工具并行执行
+- 单个工具失败**不会**中断其他工具——失败记录在 `failures` 中
+
+无需配置——并行执行是默认行为。
+
+## 上下文压缩
+
+对于接近上下文窗口限制的长对话，可启用压缩：
+
+```rust
+use phi_agent::CompressionMiddleware;
+
+builder = builder.middleware(CompressionMiddleware::new());
+```
+
+当上下文窗口满时，框架会自动压缩对话历史并继续循环——无需重启。
+
+CLI 用户也可以用 `/compact` 手动压缩。
+
+## Prompt Fragments（可组合提示词）
+
+可以用独立的 Fragment 组合系统提示词，而非单一硬编码：
+
+```rust
+use agent_base::PromptFragment;
+use agent_base::FragmentContext;
+
+struct MyPersonalityFragment;
+
+impl PromptFragment for MyPersonalityFragment {
+    fn name(&self) -> &str { "personality" }
+    fn priority(&self) -> i32 { 10 } // 越小越靠前
+    fn render(&self, _ctx: &FragmentContext) -> Option<String> {
+        Some("你是一个精通 Rust 的助手。".into())
+    }
+}
+```
+
+Fragment 按 `priority` 排序后拼接。内置的 `DynamicToolsFragment` 会自动将已注册工具的描述注入提示词。
 
 ## 延伸阅读
 

@@ -9,6 +9,7 @@ Each crate is an independent repository under [hibuka-labs](https://github.com/h
 | Crate | Repository | crates.io |
 |-------|-----------|-----------|
 | `agent-base` | [hibuka-labs/agent-base](https://github.com/hibuka-labs/agent-base) | ✅ |
+| `agent-types` | Workspace member inside agent-base (`crates/agent-types`) | ✅ |
 | `agent-works` | [hibuka-labs/agent-works](https://github.com/hibuka-labs/agent-works) | ✅ |
 | `phi-agent` | [hibuka-labs/phi-agent](https://github.com/hibuka-labs/phi-agent) (this repo) | ✅ |
 | `phi-kernel-tools` | [hibuka-labs/phi-kernel-tools](https://github.com/hibuka-labs/phi-kernel-tools) | ✅ |
@@ -23,9 +24,12 @@ All crates use pure version dependencies — no monorepo, no path tricks.
 
 ```mermaid
 graph TB
-    AB[agent-base<br/>Runtime kernel<br/>Tool trait · LLM clients · Events]
+    AT[agent-types<br/>Pure data types<br/>Content · SessionId · ToolMetadata]
 
-    AB --> AW[agent-works<br/>MCP · Skills · Focus]
+    AB[agent-base<br/>Runtime kernel<br/>Tool trait · LLM clients · Events]
+    AT --> AB
+
+    AB --> AW[agent-works<br/>MCP · Skills · Focus · PromptFragments]
     AB --> PKT[phi-kernel-tools<br/>Kernel tools]
     AB --> YT[your-tools<br/>Custom Tool impls]
     AB --> PTEL[phi-telemetry<br/>Metrics · Cost tracking]
@@ -42,10 +46,21 @@ graph TB
 
 ## Crate Responsibilities
 
+### agent-types
+Pure type definitions — `cargo add agent-types` if you only need the data shapes:
+- `Content` — tool output (Text / Image)
+- `ToolMetadata` — tool introspection (name, origin, version, requirements)
+- `ToolExposure` — tool visibility (Direct / Deferred / Hidden)
+- `ActivationContext` — per-turn context for Deferred tool activation
+- `SessionId` — session identifier
+
+Zero async, zero I/O, zero runtime dependencies (only `serde`).
+
 ### agent-base
 The runtime kernel — `cargo add agent-base` if you just want the engine:
 - `AgentRuntime` — core event loop (LLM chat → tool calls → repeat)
-- `Tool` trait — interface all tools implement
+- `Tool` trait — interface all tools implement (with `exposure()`, `should_activate()`, `timeout_ms()`, `metadata()`)
+- `ToolDecision` — pre-hook return type (Proceed / Block / Modify args)
 - `LlmClient` trait — abstraction over LLM providers
 - `RuntimeEvent` — all events emitted during a turn:
 
@@ -67,9 +82,11 @@ The runtime kernel — `cargo add agent-base` if you just want the engine:
 ### agent-works
 Built on agent-base — `cargo add agent-works` for the toolbox:
 - **MCP** — Model Context Protocol support
-- **Skills** — plugin/skill system
+- **Skills** — plugin/skill system (YAML and prompt-based)
 - **Focus** — structured LLM calls with typed input/output
 - **Multi-Agent** — sub-agent spawning and orchestration
+- **PromptFragments** — composable system prompt assembly
+- **Compression** — context window compression for long conversations
 
 ### phi-kernel-tools
 Kernel primitives behind feature flags. File tools are on by default; shell and multi-agent are opt-in:
@@ -98,8 +115,11 @@ Each crate uses Cargo feature flags to control what gets compiled. Don't need it
 |---------|------------|---------|
 | `mcp` | MCP protocol support | Off |
 | `skill` | Skills plugin system | Off |
+| `prompt_skill` | Prompt-based skills | Off |
+| `yaml_skill` | YAML-based skills | Off |
 | `focus` | Structured LLM calls | Off |
 | `multi_agent` | Sub-agent orchestration | Off |
+| `compression` | Context window compression | On |
 | `full` | Everything | — |
 
 ### phi-kernel-tools
@@ -117,23 +137,25 @@ Each crate uses Cargo feature flags to control what gets compiled. Don't need it
 | `file` | File tools + Skills | On |
 | `mcp` | MCP protocol | On |
 | `focus` | Structured LLM calls | On |
+| `compression` | Context window compression | On |
 | `shell` | Shell command execution | Off |
 | `multi-agent` | Sub-agent orchestration | Off |
 | `telemetry` | Metrics collection | On |
 | `logging` | Structured logging | On |
-| `full` | Everything | — |
+| `browser` | Browser automation (21 CDP tools) | Off |
+| `full` | Everything (except browser) | — |
 
 ### Examples
 
 ```toml
 # Lightweight: file tools + MCP only
-phi-agent = { version = "0.11", default-features = false, features = ["file", "mcp"] }
+phi-agent = { version = "0.12", default-features = false, features = ["file", "mcp"] }
 
-# Standard: default config (file + MCP + focus + telemetry + logging)
-phi-agent = { version = "0.11" }
+# Standard: default config (file + MCP + focus + compression + telemetry + logging)
+phi-agent = { version = "0.12" }
 
-# Full: everything
-phi-agent = { version = "0.11", features = ["full"] }
+# Full: everything (except browser)
+phi-agent = { version = "0.12", features = ["full"] }
 ```
 
 ### Telemetry & Observability

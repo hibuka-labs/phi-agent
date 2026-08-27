@@ -72,12 +72,15 @@ arguments: [branch, env]
 | `version` | 否 | 语义版本号 |
 | `author` | 否 | 作者名称 |
 | `tags` | 否 | 逗号分隔的关键词 |
+| `category` | 否 | 分组标签（如 `deploy`、`review`、`ops`） |
 | `allowed-tools` | 否 | 技能激活时的工具白名单 |
 | `disallowed-tools` | 否 | 技能激活时禁用的工具 |
 | `model` | 否 | 模型覆盖（默认 `inherit`） |
 | `user-invocable` | 否 | 用户能否通过 `/skill-name` 触发（默认 true） |
 | `disable-model-invocation` | 否 | 禁止 LLM 自动触发（用于有副作用的技能） |
-| `arguments` | 否 | 参数占位符，如 `[branch, env]` |
+| `context-mode` | 否 | 执行上下文：`fork` 在隔离的子 agent 中运行（默认：同一上下文） |
+| `arguments` | 否 | 参数名称，如 `[branch, env]` — 每个参数默认为字符串类型 |
+| `path-patterns` | 否 | 文件 glob 模式，用于自动激活（如 `["*.tf", "infra/**"]`） |
 
 ## 渐进式披露
 

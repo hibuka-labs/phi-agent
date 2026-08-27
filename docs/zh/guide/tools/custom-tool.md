@@ -14,7 +14,7 @@ pub trait Tool: Send + Sync {
 }
 ```
 
-需要实现四个方法：
+需要实现四个必需方法：
 
 | 方法 | 作用 |
 |------|------|
@@ -22,6 +22,15 @@ pub trait Tool: Send + Sync {
 | `description()` | 人类可读的工具用途描述 |
 | `schema()` | JSON Schema 描述参数（发送给 LLM） |
 | `call()` | 实际逻辑 — 接收解析后的参数，返回内容 |
+
+以及可选的覆盖方法（有默认值）：
+
+| 方法 | 默认值 | 作用 |
+|------|--------|------|
+| `timeout_ms()` | `None`（使用框架默认值） | 单个工具的超时时间（毫秒） |
+| `metadata()` | `origin: "custom"`, `version: "unknown"` | 机器可读的来源和版本信息 |
+| `exposure()` | `Direct` | 可见性：`Direct` / `Deferred` / `Hidden` |
+| `should_activate()` | `true` | `Deferred` 工具的激活条件 |
 
 ## 示例：天气工具
 
@@ -72,6 +81,99 @@ let builder = base_agent_builder(llm_client)
 
 let agent = PhiAgent::build(builder, config)?;
 ```
+
+## TypedTool — 从类型生成 Schema
+
+无需手写 JSON Schema，实现 `TypedTool` 即可通过 `schemars` 从类型化的 `Args` 结构体自动派生：
+
+```rust
+use agent_base::{AgentResult, Content, TypedTool, ToolContext};
+use async_trait::async_trait;
+use schemars::JsonSchema;
+use serde::Deserialize;
+
+#[derive(Deserialize, JsonSchema)]
+struct WeatherArgs {
+    /// 城市名称，例如 "北京"
+    city: String,
+}
+
+struct WeatherTool;
+
+#[async_trait]
+impl TypedTool for WeatherTool {
+    type Args = WeatherArgs;
+    type Output = String;  // String → 直接转为 Content::text；其他类型 → JSON
+
+    fn name(&self) -> &'static str { "get_weather" }
+    fn description(&self) -> &'static str { "获取指定城市的当前天气" }
+
+    async fn call_typed(&self, args: WeatherArgs, _ctx: &ToolContext) -> AgentResult<String> {
+        Ok(format!("{} 天气：22°C，晴", args.city))
+    }
+}
+```
+
+`TypedTool` 自动实现 `Tool` — 和普通工具一样注册即可：
+
+```rust
+builder.register_tool(WeatherTool);
+```
+
+## 工具可见性
+
+默认所有工具都是 `Direct` — 始终对模型可见。你可以控制可见性：
+
+```rust
+use agent_base::ToolExposure;
+
+impl Tool for MyTool {
+    // ...
+
+    fn exposure(&self) -> ToolExposure {
+        ToolExposure::Deferred  // 仅在 should_activate 返回 true 时可见
+    }
+
+    async fn should_activate(&self, ctx: &ActivationContext) -> bool {
+        // 仅当特定工具存在时激活
+        ctx.current_tools.iter().any(|t| t == "file_read")
+    }
+}
+```
+
+| 可见性 | 行为 |
+|--------|------|
+| `Direct` | 始终发送给模型（默认） |
+| `Deferred` | 条件可见 — 由 `should_activate()` 控制 |
+| `Hidden` | 对模型永远不可见（内部/框架工具） |
+
+`ActivationContext` 提供 `session_id`、`current_tools`（已激活的工具名称列表）和 `workspace`（工作目录）。
+
+## 元数据和超时
+
+覆盖 `metadata()` 以提供工具来源和版本信息：
+
+```rust
+fn metadata(&self) -> ToolMetadata {
+    ToolMetadata {
+        name: self.name().to_string(),
+        description: self.description().to_string(),
+        origin: "phi-tools".to_string(),
+        version: "0.2.0".to_string(),
+        requirements: vec!["network".to_string()],
+    }
+}
+```
+
+覆盖 `timeout_ms()` 为需要更长或更短时间的工具设置超时：
+
+```rust
+fn timeout_ms(&self) -> Option<u64> {
+    Some(30_000)  // 30 秒
+}
+```
+
+返回 `None` 使用框架默认值（`ToolConfig.default_tool_timeout_ms`）。
 
 ## Content
 

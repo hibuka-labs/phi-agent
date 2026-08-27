@@ -9,6 +9,7 @@ phi-agent 与依赖 crate 之间的关系，以及关键设计决策。
 | Crate | 仓库 | crates.io |
 |-------|------|-----------|
 | `agent-base` | [hibuka-labs/agent-base](https://github.com/hibuka-labs/agent-base) | ✅ |
+| `agent-types` | agent-base 内的 workspace 成员（`crates/agent-types`） | ✅ |
 | `agent-works` | [hibuka-labs/agent-works](https://github.com/hibuka-labs/agent-works) | ✅ |
 | `phi-agent` | [hibuka-labs/phi-agent](https://github.com/hibuka-labs/phi-agent)（本仓库） | ✅ |
 | `phi-kernel-tools` | [hibuka-labs/phi-kernel-tools](https://github.com/hibuka-labs/phi-kernel-tools) | ✅ |
@@ -16,16 +17,19 @@ phi-agent 与依赖 crate 之间的关系，以及关键设计决策。
 | `phi-telemetry` | [hibuka-labs/phi-telemetry](https://github.com/hibuka-labs/phi-telemetry) | ✅ |
 | `log-core` | [hibuka-labs/log-core](https://github.com/hibuka-labs/log-core) | ✅ |
 
-所有 crate 使用纯版本依赖 `version = "0.1"`，无 path、无 monorepo。
+所有 crate 使用纯版本依赖，无 path、无 monorepo。
 `cargo add phi-agent` 从 crates.io 拉取所需依赖。
 
 ## 依赖链
 
 ```mermaid
 graph TB
-    AB[agent-base<br/>运行时内核<br/>Tool trait · LLM 客户端 · Events]
+    AT[agent-types<br/>纯数据类型<br/>Content · SessionId · ToolMetadata]
 
-    AB --> AW[agent-works<br/>MCP · Skills · Focus]
+    AB[agent-base<br/>运行时内核<br/>Tool trait · LLM 客户端 · Events]
+    AT --> AB
+
+    AB --> AW[agent-works<br/>MCP · Skills · Focus · PromptFragments]
     AB --> PKT[phi-kernel-tools<br/>内核工具]
     AB --> YT[your-tools<br/>自定义工具实现]
     AB --> PTEL[phi-telemetry<br/>指标采集 · 成本追踪]
@@ -42,10 +46,21 @@ graph TB
 
 ## 各 Crate 职责
 
+### agent-types
+纯类型定义 — `cargo add agent-types` 如果只需要数据结构：
+- `Content` — 工具输出（Text / Image）
+- `ToolMetadata` — 工具内省（name、origin、version、requirements）
+- `ToolExposure` — 工具可见性（Direct / Deferred / Hidden）
+- `ActivationContext` — Deferred 工具激活的每轮上下文
+- `SessionId` — 会话标识符
+
+零 async、零 I/O、零运行时依赖（仅 `serde`）。
+
 ### agent-base
 运行时内核 — `cargo add agent-base` 如果只需要引擎：
 - `AgentRuntime` — 核心事件循环（LLM 对话 → 工具调用 → 循环）
-- `Tool` trait — 所有工具实现的接口
+- `Tool` trait — 所有工具实现的接口（含 `exposure()`、`should_activate()`、`timeout_ms()`、`metadata()`）
+- `ToolDecision` — 前置钩子返回类型（Proceed / Block / Modify 参数）
 - `LlmClient` trait — LLM 提供商的抽象层
 - `RuntimeEvent` — 每轮对话中发出的所有事件：
 
@@ -67,9 +82,11 @@ graph TB
 ### agent-works
 基于 agent-base — `cargo add agent-works` 获取工具箱：
 - **MCP** — Model Context Protocol 支持
-- **Skills** — 插件/技能系统
+- **Skills** — 插件/技能系统（YAML 和 prompt 两种模式）
 - **Focus** — 带类型的结构化 LLM 调用
 - **Multi-Agent** — 子 Agent 调度与编排
+- **PromptFragments** — 可组合的系统提示词组装
+- **Compression** — 长对话的上下文窗口压缩
 
 ### phi-kernel-tools
 内核原语，通过 feature flag 控制。文件工具默认开启，shell 和多 Agent 按需启用：
@@ -98,8 +115,11 @@ graph TB
 |---------|------|------|
 | `mcp` | MCP 协议支持 | 关闭 |
 | `skill` | Skills 插件系统 | 关闭 |
+| `prompt_skill` | Prompt 模式技能 | 关闭 |
+| `yaml_skill` | YAML 模式技能 | 关闭 |
 | `focus` | 结构化 LLM 调用 | 关闭 |
 | `multi_agent` | 子 Agent 调度 | 关闭 |
+| `compression` | 上下文窗口压缩 | 开启 |
 | `full` | 全部开启 | — |
 
 ### phi-kernel-tools
@@ -117,23 +137,25 @@ graph TB
 | `file` | 文件工具 + Skills | 开启 |
 | `mcp` | MCP 协议 | 开启 |
 | `focus` | 结构化 LLM 调用 | 开启 |
+| `compression` | 上下文窗口压缩 | 开启 |
 | `shell` | Shell 命令执行 | 关闭 |
 | `multi-agent` | 子 Agent 调度 | 关闭 |
 | `telemetry` | 指标采集 | 开启 |
 | `logging` | 结构化日志 | 开启 |
-| `full` | 全部功能 | — |
+| `browser` | 浏览器自动化（21 个 CDP 工具） | 关闭 |
+| `full` | 全部功能（不含 browser） | — |
 
 ### 组合示例
 
 ```toml
 # 轻量：只要文件工具 + MCP
-phi-agent = { version = "0.11", default-features = false, features = ["file", "mcp"] }
+phi-agent = { version = "0.12", default-features = false, features = ["file", "mcp"] }
 
-# 标准：默认配置（文件 + MCP + focus + 遥测 + 日志）
-phi-agent = { version = "0.11" }
+# 标准：默认配置（文件 + MCP + focus + 压缩 + 遥测 + 日志）
+phi-agent = { version = "0.12" }
 
-# 全量：全部功能
-phi-agent = { version = "0.11", features = ["full"] }
+# 全量：全部功能（不含 browser）
+phi-agent = { version = "0.12", features = ["full"] }
 ```
 
 ### 可观测性

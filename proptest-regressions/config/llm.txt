@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 472a2f47d66b09c5869dd1dbd10d1cf484736dc4f042ff149138de03134203e1 # shrinks to cli_url = "https://ynh.example.com/v4", env_url = "https://gvzrqsp.example.com/v9"
+cc e2c7472e0ac00dff6794d08f3f06d4b89c4a2b3aa439a2a041c8592689640515 # shrinks to cli_url = "https://gzxo.example.com/v5", env_url = "https://obizzzjltdm.example.com/v6"

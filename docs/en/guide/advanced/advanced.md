@@ -76,6 +76,7 @@ Implement the `ToolPolicy` trait to control tool execution behavior — approval
 
 ```rust
 use phi_agent::{AgentResult, ApprovalRequest, Content, RiskLevel, ToolContext, ToolPolicy};
+use agent_base::ToolDecision;
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -98,10 +99,13 @@ impl ToolPolicy for RiskAwarePolicy {
         None // safe commands run without approval
     }
 
-    // 2. Sync check just before tool execution — return Err to abort
-    fn before_call(&self, tool_name: &str, _args: &Value, _ctx: &ToolContext) -> AgentResult<()> {
+    // 2. Sync check just before tool execution — return ToolDecision
+    fn before_call(
+        &self, tool_name: &str, args: &Value, _ctx: &ToolContext,
+    ) -> AgentResult<ToolDecision> {
         tracing::info!("about to execute tool: {tool_name}");
-        Ok(())
+        // Proceed with original args, Block to abort, or Modify to rewrite args
+        Ok(ToolDecision::Proceed)
     }
 
     // 3. Sync hook after successful execution — for auditing or metrics
@@ -116,7 +120,17 @@ impl ToolPolicy for RiskAwarePolicy {
 builder = builder.tool_policy(Arc::new(RiskAwarePolicy));
 ```
 
-The execution pipeline runs: `evaluate_approval` → (wait for user if needed) → `before_call` → `tool.call()` → `after_call`. If `before_call` returns `Err`, the tool is aborted and `after_call` is skipped.
+The execution pipeline runs: `evaluate_approval` → (wait for user if needed) → `before_call` → `tool.call()` → `after_call`.
+
+`before_call` returns a `ToolDecision`:
+
+| Variant | Effect |
+|---------|--------|
+| `ToolDecision::Proceed` | Execute with the original arguments |
+| `ToolDecision::Block(msg)` | Abort the call; `msg` is sent to the LLM |
+| `ToolDecision::Modify(new_args)` | Execute with replacement arguments |
+
+`Modify` is useful for auto-injecting flags (e.g. `--no-color`), path normalization, or sanitizing inputs before execution.
 
 > 💡 Runnable demo: [`examples/tools/custom_policy.rs`](https://github.com/hibuka-labs/phi-agent/blob/master/examples/tools/custom_policy.rs) covers both custom Middleware and ToolPolicy. Run with `cargo run --example custom_policy` — no API key required.
 
@@ -257,6 +271,51 @@ builder = builder.error_recovery(Arc::new(
     ConsecutiveFailureRecovery::new(3)
 ));
 ```
+
+## Parallel Tool Execution
+
+When the LLM returns multiple tool calls in a single turn, they execute **concurrently** via `join_all`. This reduces latency from `sum(tool_times)` to `max(tool_times)`.
+
+- Approval is handled sequentially first (batch-approve all calls)
+- Then all approved tools run in parallel
+- A single tool failure does **not** abort the others — it's collected in `failures`
+
+No configuration needed — parallel execution is the default.
+
+## Context Compression
+
+For long conversations that approach the context window limit, enable compression:
+
+```rust
+use phi_agent::CompressionMiddleware;
+
+builder = builder.middleware(CompressionMiddleware::new());
+```
+
+When the context window fills up, the framework automatically compresses the conversation history and continues the loop — no restart needed.
+
+CLI users can also compress manually with `/compact`.
+
+## Prompt Fragments (Composable Prompts)
+
+Instead of a single hardcoded system prompt, you can compose it from independent fragments:
+
+```rust
+use agent_base::PromptFragment;
+use agent_base::FragmentContext;
+
+struct MyPersonalityFragment;
+
+impl PromptFragment for MyPersonalityFragment {
+    fn name(&self) -> &str { "personality" }
+    fn priority(&self) -> i32 { 10 } // lower = earlier in prompt
+    fn render(&self, _ctx: &FragmentContext) -> Option<String> {
+        Some("You are a helpful assistant specialized in Rust.".into())
+    }
+}
+```
+
+Fragments are sorted by `priority` and concatenated. The built-in `DynamicToolsFragment` automatically injects registered tool descriptions into the prompt.
 
 ## Further Reading
 

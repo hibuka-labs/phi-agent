@@ -72,12 +72,15 @@ Deploy the project to the target environment.
 | `version` | No | Semantic version |
 | `author` | No | Author name or handle |
 | `tags` | No | Comma-separated keywords |
+| `category` | No | Grouping label (e.g. `deploy`, `review`, `ops`) |
 | `allowed-tools` | No | Tool whitelist when skill is active |
 | `disallowed-tools` | No | Tools to block when skill is active |
 | `model` | No | Model override (`inherit` by default) |
 | `user-invocable` | No | Can user trigger via `/skill-name`? (default: true) |
 | `disable-model-invocation` | No | Prevent LLM from auto-triggering (for side-effectful skills) |
-| `arguments` | No | Parameter placeholders like `[branch, env]` |
+| `context-mode` | No | Execution context: `fork` runs in isolated sub-agent (default: same context) |
+| `arguments` | No | Parameter names, e.g. `[branch, env]` — each becomes a string parameter |
+| `path-patterns` | No | File glob patterns for auto-activation (e.g. `["*.tf", "infra/**"]`) |
 
 ## Progressive disclosure
 
