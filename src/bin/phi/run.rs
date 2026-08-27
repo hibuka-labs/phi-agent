@@ -132,7 +132,11 @@ pub async fn run_repl(
                 trimmed
             },
             Err(rustyline::error::ReadlineError::Eof) => break,
-            Err(rustyline::error::ReadlineError::Interrupted) => continue,
+            Err(rustyline::error::ReadlineError::Interrupted) => {
+                // Ctrl+C on empty prompt — exit cleanly
+                println!();
+                break;
+            },
             Err(_) => break,
         };
 
