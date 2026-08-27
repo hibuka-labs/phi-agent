@@ -28,21 +28,20 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use agent_base::{
-    AgentResult, ApprovalDecision, ApprovalHandler, ApprovalRequest, ChatMessage, LlmCapabilities, LlmClient,
-    ReasoningConfig, ResponseFormat, RiskLevel, StreamChunk,
-};
+use agent_base::llm_trait::response::FinishReason;
+use agent_base::llm_trait::{Capabilities, ChatRequest, ChatResponse, ChatStream, LlmError, LlmProvider, ProviderInfo};
+use agent_base::{AgentResult, ApprovalDecision, ApprovalHandler, ApprovalRequest, RiskLevel, StreamChunk};
 use async_trait::async_trait;
 use futures_core::Stream;
 
 // ── Mock LLM client (same pattern as custom_policy.rs) ────────────────────
 
 struct QueueStream {
-    items: VecDeque<AgentResult<StreamChunk>>,
+    items: VecDeque<Result<StreamChunk, LlmError>>,
 }
 
 impl Stream for QueueStream {
-    type Item = AgentResult<StreamChunk>;
+    type Item = Result<StreamChunk, LlmError>;
     fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Poll::Ready(self.items.pop_front())
     }
@@ -57,39 +56,32 @@ impl MockLlmClient {
 }
 
 #[async_trait]
-impl LlmClient for MockLlmClient {
-    async fn chat(
-        &self,
-        _messages: &[ChatMessage],
-        _tools: &[serde_json::Value],
-        _reasoning: Option<&ReasoningConfig>,
-        _response_format: Option<&ResponseFormat>,
-    ) -> AgentResult<serde_json::Value> {
-        Ok(serde_json::json!({"choices":[{"message":{"content":"mock response"}}]}))
-    }
-
-    async fn chat_stream(
-        &self,
-        _messages: &[ChatMessage],
-        _tools: &[serde_json::Value],
-        _reasoning: Option<&ReasoningConfig>,
-        _response_format: Option<&ResponseFormat>,
-    ) -> AgentResult<Pin<Box<dyn Stream<Item = AgentResult<StreamChunk>> + Send>>> {
+impl LlmProvider for MockLlmClient {
+    async fn stream(&self, _request: ChatRequest) -> Result<ChatStream, LlmError> {
         let mut items = VecDeque::new();
         items.push_back(Ok(StreamChunk::Text("Hello from mock!".into())));
         items.push_back(Ok(StreamChunk::Stop { finish_reason: Some("stop".into()) }));
-        Ok(Box::pin(QueueStream { items }))
+        Ok(ChatStream::new(Box::pin(QueueStream { items })))
     }
 
-    fn capabilities(&self) -> LlmCapabilities {
-        LlmCapabilities {
-            supports_streaming: true,
-            supports_tools: true,
-            supports_vision: false,
-            supports_thinking: false,
-            max_context_tokens: Some(128_000),
-            max_output_tokens: Some(16_384),
-        }
+    async fn chat(&self, _request: ChatRequest) -> Result<ChatResponse, LlmError> {
+        Ok(ChatResponse {
+            content: "mock response".to_string(),
+            reasoning_content: None,
+            tool_calls: vec![],
+            usage: agent_base::UsageInfo::default(),
+            finish_reason: FinishReason::Stop,
+            raw: None,
+            thinking_signature: None,
+        })
+    }
+
+    fn capabilities(&self) -> Capabilities {
+        Capabilities { supports_streaming: true, supports_tools: true, ..Default::default() }
+    }
+
+    fn info(&self) -> ProviderInfo {
+        ProviderInfo { name: "mock".into(), model: "mock".into(), version: None }
     }
 }
 
@@ -153,7 +145,7 @@ async fn main() -> anyhow::Result<()> {
     println!("  Sensitive   → AllowOnce   (approve this once, re-prompt later)");
     println!("  Destructive → Deny        (always reject)\n");
 
-    let llm_client = agent_base::llm::adapt(Arc::new(MockLlmClient::new()));
+    let llm_client = Arc::new(MockLlmClient::new());
     let approval_handler = Arc::new(RiskBasedApprovalHandler::new());
 
     // Build the agent with the custom handler

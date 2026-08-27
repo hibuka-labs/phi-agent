@@ -1,0 +1,33 @@
+[package]
+name = "phi-agent-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+serde_json = "1"
+
+[dependencies.phi-agent]
+path = ".."
+
+[patch.crates-io]
+agent-base = { path = "../../agent-base" }
+agent-works = { path = "../../agent-works" }
+
+[[bin]]
+name = "bridge_message_fuzz"
+path = "fuzz_targets/bridge_message_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "session_id_fuzz"
+path = "fuzz_targets/session_id_fuzz.rs"
+test = false
+doc = false
+bench = false

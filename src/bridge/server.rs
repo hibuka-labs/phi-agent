@@ -183,7 +183,7 @@ mod tests {
     }
 
     impl Stream for StopStream {
-        type Item = agent_base::AgentResult<agent_base::StreamChunk>;
+        type Item = Result<agent_base::StreamChunk, agent_base::llm_trait::LlmError>;
 
         fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             match self.state {
@@ -201,24 +201,36 @@ mod tests {
     }
 
     #[async_trait]
-    impl agent_base::StreamClient for StubClient {
+    impl agent_base::llm_trait::LlmProvider for StubClient {
         async fn stream(
             &self,
-            _messages: &[agent_base::ChatMessage],
-            _tools: &[serde_json::Value],
-            _reasoning: Option<&agent_base::ReasoningConfig>,
-            _response_format: Option<&agent_base::ResponseFormat>,
-        ) -> agent_base::AgentResult<Pin<Box<dyn Stream<Item = agent_base::AgentResult<agent_base::StreamChunk>> + Send>>>
-        {
-            Ok(Box::pin(StopStream { state: 0 }))
+            _request: agent_base::llm_trait::ChatRequest,
+        ) -> Result<agent_base::llm_trait::ChatStream, agent_base::llm_trait::LlmError> {
+            Ok(agent_base::llm_trait::ChatStream::new(Box::pin(StopStream { state: 0 })))
         }
-
-        fn capabilities(&self) -> agent_base::LlmCapabilities {
-            agent_base::LlmCapabilities::default()
+        async fn chat(
+            &self,
+            _request: agent_base::llm_trait::ChatRequest,
+        ) -> Result<agent_base::llm_trait::ChatResponse, agent_base::llm_trait::LlmError> {
+            Ok(agent_base::llm_trait::ChatResponse {
+                content: "hello".to_string(),
+                reasoning_content: None,
+                tool_calls: vec![],
+                usage: agent_base::UsageInfo::default(),
+                finish_reason: agent_base::llm_trait::FinishReason::Stop,
+                raw: None,
+                thinking_signature: None,
+            })
+        }
+        fn capabilities(&self) -> agent_base::llm_trait::Capabilities {
+            agent_base::llm_trait::Capabilities::default()
+        }
+        fn info(&self) -> agent_base::llm_trait::ProviderInfo {
+            agent_base::llm_trait::ProviderInfo { name: "stub".to_string(), model: "stub".to_string(), version: None }
         }
     }
 
-    fn client() -> Arc<dyn agent_base::StreamClient> {
+    fn client() -> Arc<dyn agent_base::llm_trait::LlmProvider> {
         Arc::new(StubClient)
     }
 

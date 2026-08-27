@@ -1,0 +1,107 @@
+name: Fuzz
+
+on:
+  pull_request:
+    branches: [master, main]
+  schedule:
+    # 每天 UTC 02:00 深度 fuzz（北京时间 10:00）
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  DEPS_ORG: hibuka-labs
+
+jobs:
+  fuzz:
+    name: fuzz (${{ matrix.project }}/${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── phi-kernel-tools (3) ──
+          - project: phi-kernel-tools
+            target: find_positions_fuzz
+            features: fuzzing
+          - project: phi-kernel-tools
+            target: glob_match_fuzz
+            features: fuzzing
+          - project: phi-kernel-tools
+            target: edit_file_fuzz
+            features: fuzzing
+          # ── agent-base (3) ──
+          - project: agent-base
+            target: finish_reason_fuzz
+            features: fuzzing
+          - project: agent-base
+            target: tool_call_parse_fuzz
+            features: fuzzing
+          - project: agent-base
+            target: validate_message_sequence_fuzz
+            features: fuzzing
+          # ── llm-providers (3) ──
+          - project: llm-providers
+            target: domain_matches_fuzz
+            features: fuzzing
+          - project: llm-providers
+            target: parse_openai_response_fuzz
+            features: fuzzing
+          - project: llm-providers
+            target: parse_anthropic_response_fuzz
+            features: fuzzing
+          # ── agent-works (3) ──
+          - project: agent-works
+            target: agent_path_fuzz
+            features: fuzzing
+          - project: agent-works
+            target: frontmatter_fuzz
+            features: fuzzing
+          - project: agent-works
+            target: json_rpc_fuzz
+            features: fuzzing
+          # ── phi-agent (2) ──
+          - project: phi-agent
+            target: bridge_message_fuzz
+            features: default
+          - project: phi-agent
+            target: session_id_fuzz
+            features: default
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Checkout dependencies
+        run: |
+          cd ..
+          for repo in agent-base agent-works phi-kernel-tools llm-providers phi-tools log-core; do
+            git clone --depth 1 "https://github.com/$DEPS_ORG/$repo.git" || true
+          done
+
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ../${{ matrix.project }}
+          key: fuzz-${{ matrix.project }}-${{ matrix.target }}
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+
+      # PR: 每个 target 跑 30 秒；定时/workflow_dispatch: 跑 10 分钟
+      - name: Determine fuzz duration
+        id: duration
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "seconds=600" >> "$GITHUB_OUTPUT"
+          else
+            echo "seconds=30" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run fuzz target
+        working-directory: ../${{ matrix.project }}
+        run: |
+          cargo fuzz run ${{ matrix.target }} -- -max_total_time=${{ steps.duration.outputs.seconds }} -rss_limit_mb=2048

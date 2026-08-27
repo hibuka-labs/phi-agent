@@ -64,15 +64,12 @@ impl PhiAgent {
     /// use phi_agent::build_system_prompt;
     /// use std::sync::Arc;
     ///
-    /// let llm_client = Arc::new(phi_agent::OpenAiClient::new(
-    ///     "sk-...".into(),
-    ///     "gpt-4o".into(),
-    ///     Some("https://api.openai.com/v1".into()),
-    /// ));
+    /// // Create your LLM provider (e.g., via llm_unified::create_provider)
+    /// let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!();
     ///
     /// let builder = PhiAgent::builder(llm_client, build_system_prompt());
     /// ```
-    pub fn builder(llm_client: Arc<dyn agent_base::StreamClient>, system_prompt: String) -> AgentBuilder {
+    pub fn builder(llm_client: Arc<dyn agent_base::llm_trait::LlmProvider>, system_prompt: String) -> AgentBuilder {
         base_agent_builder(llm_client).system_prompt(system_prompt)
     }
 
@@ -84,11 +81,8 @@ impl PhiAgent {
     /// use phi_agent::{PhiAgent, PhiAgentConfig, base_agent_builder, build_system_prompt};
     /// use std::sync::Arc;
     ///
-    /// let llm_client = Arc::new(phi_agent::OpenAiClient::new(
-    ///     "sk-...".into(),
-    ///     "gpt-4o".into(),
-    ///     Some("https://api.openai.com/v1".into()),
-    /// ));
+    /// // Create your LLM provider (e.g., via llm_unified::create_provider)
+    /// let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!();
     /// let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     ///
     /// let config = PhiAgentConfig {
@@ -117,7 +111,7 @@ impl PhiAgent {
     /// # use phi_agent::{PhiAgent, PhiAgentConfig, base_agent_builder, build_system_prompt};
     /// # use std::sync::Arc;
     /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// let session = agent.create_session().await;
@@ -138,7 +132,7 @@ impl PhiAgent {
     /// # use phi_agent::create_stdout_renderer;
     /// # use std::sync::Arc;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// let session = agent.create_session().await;
@@ -166,7 +160,7 @@ impl PhiAgent {
     /// # use phi_agent::{PhiAgent, PhiAgentConfig, base_agent_builder, build_system_prompt};
     /// # use std::sync::Arc;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// let agent_clone = agent.clone();
@@ -195,7 +189,7 @@ impl PhiAgent {
     /// # use phi_agent::{PhiAgent, PhiAgentConfig, base_agent_builder, build_system_prompt};
     /// # use std::sync::Arc;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// assert!(!agent.is_cancelled());
@@ -217,7 +211,7 @@ impl PhiAgent {
     /// # use phi_agent::{PhiAgent, PhiAgentConfig, base_agent_builder, build_system_prompt};
     /// # use std::sync::Arc;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// // Switch to high reasoning effort mid-conversation
@@ -237,7 +231,7 @@ impl PhiAgent {
     /// # use phi_agent::{PhiAgent, PhiAgentConfig, base_agent_builder, build_system_prompt};
     /// # use std::sync::Arc;
     /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// let runtime = agent.runtime();
@@ -258,7 +252,7 @@ impl PhiAgent {
     /// # use phi_agent::{PhiAgent, PhiAgentConfig, base_agent_builder, build_system_prompt};
     /// # use std::sync::Arc;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// let tools = agent.list_tools().await;
@@ -308,7 +302,7 @@ impl PhiAgent {
     /// # use phi_agent::McpServerConfig;
     /// # use std::sync::Arc;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// // Attach a filesystem MCP server at runtime
@@ -383,7 +377,7 @@ impl PhiAgent {
     /// # use phi_agent::McpServerConfig;
     /// # use std::sync::Arc;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// # agent.attach_mcp(McpServerConfig {
@@ -457,7 +451,7 @@ impl PhiAgent {
     /// # use phi_agent::{McpServeConfig, McpServerTransport};
     /// # use std::sync::Arc;
     /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let llm_client = Arc::new(phi_agent::OpenAiClient::new("sk-...".into(), "gpt-4o".into(), None));
+    /// # let llm_client: Arc<dyn agent_base::llm_trait::LlmProvider> = todo!("create your LLM provider");
     /// # let builder = base_agent_builder(llm_client).system_prompt(build_system_prompt());
     /// # let agent = PhiAgent::build(builder, PhiAgentConfig::default())?;
     /// // Expose the agent as an MCP server via stdio
@@ -494,7 +488,7 @@ mod tests {
     }
 
     impl Stream for StopStream {
-        type Item = agent_base::AgentResult<agent_base::StreamChunk>;
+        type Item = Result<agent_base::StreamChunk, agent_base::llm_trait::LlmError>;
 
         fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             match self.state {
@@ -512,24 +506,36 @@ mod tests {
     }
 
     #[async_trait]
-    impl agent_base::StreamClient for StubClient {
+    impl agent_base::llm_trait::LlmProvider for StubClient {
         async fn stream(
             &self,
-            _messages: &[agent_base::ChatMessage],
-            _tools: &[serde_json::Value],
-            _reasoning: Option<&agent_base::ReasoningConfig>,
-            _response_format: Option<&agent_base::ResponseFormat>,
-        ) -> agent_base::AgentResult<Pin<Box<dyn Stream<Item = agent_base::AgentResult<agent_base::StreamChunk>> + Send>>>
-        {
-            Ok(Box::pin(StopStream { state: 0 }))
+            _request: agent_base::llm_trait::ChatRequest,
+        ) -> Result<agent_base::llm_trait::ChatStream, agent_base::llm_trait::LlmError> {
+            Ok(agent_base::llm_trait::ChatStream::new(Box::pin(StopStream { state: 0 })))
         }
-
-        fn capabilities(&self) -> agent_base::LlmCapabilities {
-            agent_base::LlmCapabilities::default()
+        async fn chat(
+            &self,
+            _request: agent_base::llm_trait::ChatRequest,
+        ) -> Result<agent_base::llm_trait::ChatResponse, agent_base::llm_trait::LlmError> {
+            Ok(agent_base::llm_trait::ChatResponse {
+                content: "stub".to_string(),
+                reasoning_content: None,
+                tool_calls: vec![],
+                usage: agent_base::UsageInfo::default(),
+                finish_reason: agent_base::llm_trait::response::FinishReason::Stop,
+                raw: None,
+                thinking_signature: None,
+            })
+        }
+        fn capabilities(&self) -> agent_base::llm_trait::Capabilities {
+            agent_base::llm_trait::Capabilities::default()
+        }
+        fn info(&self) -> agent_base::llm_trait::ProviderInfo {
+            agent_base::llm_trait::ProviderInfo { name: "stub".to_string(), model: "stub".to_string(), version: None }
         }
     }
 
-    fn client() -> Arc<dyn agent_base::StreamClient> {
+    fn client() -> Arc<dyn agent_base::llm_trait::LlmProvider> {
         Arc::new(StubClient)
     }
 

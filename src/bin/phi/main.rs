@@ -17,8 +17,7 @@ use phi_agent::config::resolve_llm_config;
 use phi_agent::render::OutputFormat;
 use phi_agent::{ApprovalMode, AutoApprovalHandler};
 use phi_agent::{
-    OpenAiClient, PhiAgent, SafetyConfig, TurnFactMiddleware, TurnToolLimitMiddleware, base_agent_builder,
-    build_system_prompt,
+    PhiAgent, SafetyConfig, TurnFactMiddleware, TurnToolLimitMiddleware, base_agent_builder, build_system_prompt,
 };
 use run::{default_node_id, init_logging, run_one_shot, run_repl};
 #[cfg(feature = "shell")]
@@ -89,11 +88,13 @@ async fn main() -> Result<()> {
     let llm_config = resolve_llm_config(args.model.as_deref(), args.base_url.as_deref())?;
 
     // 6. Create LLM client
-    let llm_client = Arc::new(OpenAiClient::new(
-        llm_config.api_key.clone(),
-        llm_config.model.clone(),
-        Some(llm_config.base_url.clone()),
-    ));
+    let llm_client = llm_unified::create_provider(&agent_base::llm_trait::LlmConfig {
+        protocol: None,
+        api_key: llm_config.api_key.clone(),
+        model: llm_config.model.clone(),
+        base_url: llm_config.base_url.clone(),
+        options: std::collections::HashMap::new(),
+    })?;
 
     // 7. Build system prompt
     let system_prompt = build_system_prompt();

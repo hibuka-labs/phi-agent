@@ -1,8 +1,9 @@
 //! Shared environment setup for the examples.
 
-use phi_agent::OpenAiClient;
 use std::sync::Arc;
 
+use agent_base::llm_trait::response::FinishReason;
+use agent_base::llm_trait::{Capabilities, ChatRequest, ChatResponse, ChatStream, LlmError, LlmProvider, ProviderInfo};
 /// LLM connection settings resolved from the environment.
 #[allow(dead_code)]
 pub struct LlmEnv {
@@ -25,9 +26,37 @@ pub fn resolve_llm_env() -> LlmEnv {
     LlmEnv { api_key, model, base_url }
 }
 
-/// Build the OpenAI-compatible client used by the examples.
+struct ExampleProvider;
+
+#[async_trait::async_trait]
+impl LlmProvider for ExampleProvider {
+    async fn stream(&self, _request: ChatRequest) -> Result<ChatStream, LlmError> {
+        Ok(ChatStream::new(Box::pin(futures_util::stream::empty())))
+    }
+
+    async fn chat(&self, _request: ChatRequest) -> Result<ChatResponse, LlmError> {
+        Ok(ChatResponse {
+            content: String::new(),
+            reasoning_content: None,
+            tool_calls: vec![],
+            usage: agent_base::UsageInfo::default(),
+            finish_reason: FinishReason::Stop,
+            raw: None,
+            thinking_signature: None,
+        })
+    }
+
+    fn capabilities(&self) -> Capabilities {
+        Capabilities::default()
+    }
+
+    fn info(&self) -> ProviderInfo {
+        ProviderInfo { name: "example".into(), model: "example".into(), version: None }
+    }
+}
+
+/// Build the LLM provider used by the examples.
 #[allow(dead_code)]
-pub fn client() -> Arc<OpenAiClient> {
-    let env = resolve_llm_env();
-    Arc::new(OpenAiClient::new(env.api_key, env.model, Some(env.base_url)))
+pub fn client() -> Arc<dyn LlmProvider> {
+    Arc::new(ExampleProvider)
 }

@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use common::client as build_client;
-use phi_agent::{Focus, FocusContext, FocusError, OpenAiClient};
+use phi_agent::{Focus, FocusContext, FocusError};
 use serde::Deserialize;
 
 // ── Output types ────────────────────────────────────────────────────────────
@@ -40,7 +40,10 @@ struct TaskStatus {
 // ── Example 1: Simple string input ──────────────────────────────────────────
 
 /// Classify sentiment from a single text string.
-async fn classify_sentiment(client: Arc<OpenAiClient>, text: String) -> Result<SentimentResult, FocusError> {
+async fn classify_sentiment(
+    client: Arc<dyn agent_base::llm_trait::LlmProvider>,
+    text: String,
+) -> Result<SentimentResult, FocusError> {
     let focus = Focus::new(
         client,
         "You are a sentiment classifier. Analyze the given text and return JSON: \
@@ -59,7 +62,7 @@ async fn classify_sentiment(client: Arc<OpenAiClient>, text: String) -> Result<S
 /// Judge whether a terminal command completed successfully,
 /// using multiple context fields.
 async fn judge_task(
-    client: Arc<OpenAiClient>,
+    client: Arc<dyn agent_base::llm_trait::LlmProvider>,
     command: &str,
     elapsed: &str,
     screen_output: &str,

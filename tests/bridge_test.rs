@@ -15,7 +15,7 @@ use serde_json::json;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_full_run_returns_events() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     let sid = server.create_session(None).await.0;
@@ -35,7 +35,7 @@ async fn test_full_run_returns_events() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_create_session_and_subscribe() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     let (sid, ext) = server.create_session(Some("my-session".to_string())).await;
@@ -58,7 +58,7 @@ fn test_protocol_version_is_1() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_br_04_empty_slot_returns_error() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     // Pre-configure mock to return a tool call
     mock_llm.set_tool_call("test_tool", &json!({"arg": "value"})).await;
 
@@ -89,7 +89,7 @@ async fn test_br_04_empty_slot_returns_error() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_br_05_session_id_reuse() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     // First call creates a new session
@@ -120,7 +120,7 @@ async fn test_br_05_session_id_reuse() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_br_06_sequential_tool_calls() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
 
     // First tool call: test_tool
     mock_llm.set_tool_call("test_tool", &json!({"step": 1})).await;
@@ -170,7 +170,7 @@ async fn test_br_06_sequential_tool_calls() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_register_tool_appears_in_list() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     server.register_tool("my_tool".into(), "A test tool".into(), json!({})).await;
@@ -182,7 +182,7 @@ async fn test_register_tool_appears_in_list() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_register_multiple_tools() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     server.register_tool("zzz_tool".into(), "Z".into(), json!({})).await;
@@ -201,7 +201,7 @@ async fn test_register_multiple_tools() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_prepare_tool_call_sender_usable() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     let tx = server.prepare_tool_call().await;
@@ -213,7 +213,7 @@ async fn test_prepare_tool_call_sender_usable() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_subscribe_events_receiver_open() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     let rx = server.subscribe_events();
@@ -224,7 +224,7 @@ async fn test_subscribe_events_receiver_open() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_get_or_create_different_external_ids() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     let sid1 = server.get_or_create_session(Some("ext-1".into())).await;
@@ -236,7 +236,7 @@ async fn test_get_or_create_different_external_ids() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_create_session_without_external_id() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     let sid = server.get_or_create_session(None).await;
@@ -251,7 +251,7 @@ async fn test_create_session_without_external_id() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_from_builder_creates_functional_server() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
 
     // Build through the same path the CLI uses
     let builder = phi_agent::base_agent_builder(mock.clone()).system_prompt("test".to_string());
@@ -269,7 +269,7 @@ async fn test_from_builder_creates_functional_server() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_cancel_idle_server_no_panic() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     // Cancel on idle server — should be a no-op, no panic
@@ -282,7 +282,7 @@ async fn test_cancel_idle_server_no_panic() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_multiple_anonymous_sessions_are_different() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     let (sid1, _) = server.create_session(None).await;
@@ -298,7 +298,7 @@ async fn test_multiple_anonymous_sessions_are_different() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_list_tools_sorted_by_name() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     // Register tools in reverse alphabetical order
@@ -322,7 +322,7 @@ async fn test_list_tools_sorted_by_name() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_create_session_external_id_consistency() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     // create_session doesn't register in the external_id map,
@@ -338,7 +338,7 @@ async fn test_create_session_external_id_consistency() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_subscribe_before_run_is_open() {
     let mock_llm = Arc::new(MockLlmClient::new());
-    let mock = agent_base::llm::adapt(mock_llm.clone());
+    let mock = mock_llm.clone();
     let server = build_server(mock);
 
     let rx = server.subscribe_events();

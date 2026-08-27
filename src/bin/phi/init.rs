@@ -10,7 +10,7 @@ LLM_MODEL=gpt-4o
 
 const MAIN_RS: &str = r#"use phi_agent::{
     base_agent_builder, build_system_prompt,
-    PhiAgent, PhiAgentConfig, OpenAiClient,
+    PhiAgent, PhiAgentConfig,
     SafetyConfig, ReasoningEffort,
     OutputFormat, create_stdout_renderer,
     AgentResult, Content, Tool, ToolContext,
@@ -57,11 +57,13 @@ async fn main() -> anyhow::Result<()> {
              Create a .env file:\n  cp .env.example .env\n  # edit with your API key"
         ))?;
     let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| "gpt-4o".into());
-    let llm = Arc::new(OpenAiClient::new(
+    let llm = llm_unified::create_provider(&phi_agent::agent_base::llm_trait::LlmConfig {
+        protocol: None,
         api_key,
-        model.clone(),
-        std::env::var("LLM_BASE_URL").ok(),
-    ));
+        model: model.clone(),
+        base_url: std::env::var("LLM_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".into()),
+        options: std::collections::HashMap::new(),
+    })?;
 
     let agent = PhiAgent::build(
         base_agent_builder(llm)
@@ -126,7 +128,7 @@ const LIB_RS: &str = r#"//! phi-agent library integration example.
 
 use phi_agent::{
     base_agent_builder, build_system_prompt,
-    PhiAgent, PhiAgentConfig, OpenAiClient,
+    PhiAgent, PhiAgentConfig,
     SafetyConfig, ReasoningEffort,
     OutputFormat, create_stdout_renderer,
     AgentResult, Content, Tool, ToolContext,
@@ -172,11 +174,13 @@ async fn main() -> anyhow::Result<()> {
              Create a .env file:\n  cp .env.example .env\n  # edit with your API key"
         ))?;
     let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| "gpt-4o".into());
-    let llm = Arc::new(OpenAiClient::new(
+    let llm = llm_unified::create_provider(&phi_agent::agent_base::llm_trait::LlmConfig {
+        protocol: None,
         api_key,
-        model.clone(),
-        std::env::var("LLM_BASE_URL").ok(),
-    ));
+        model: model.clone(),
+        base_url: std::env::var("LLM_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".into()),
+        options: std::collections::HashMap::new(),
+    })?;
 
     let agent = PhiAgent::build(
         base_agent_builder(llm)

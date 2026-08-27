@@ -5,15 +5,12 @@
 mod common;
 use common::EmptyStream;
 
-use std::pin::Pin;
 use std::sync::Arc;
 
-use agent_base::{
-    AgentResult, ChatMessage, Content, LlmCapabilities, LlmClient, ReasoningConfig, ReasoningEffort, ResponseFormat,
-    StreamChunk, Tool, ToolContext,
-};
+use agent_base::llm_trait::response::FinishReason;
+use agent_base::llm_trait::{Capabilities, ChatRequest, ChatResponse, ChatStream, LlmError, LlmProvider, ProviderInfo};
+use agent_base::{AgentResult, Content, ReasoningEffort, Tool, ToolContext, UsageInfo};
 use async_trait::async_trait;
-use futures_core::Stream;
 use phi_agent::{
     PhiAgentConfig, SafetyConfig, base_agent_builder, build_system_prompt, build_system_prompt_cn, resolve_llm_config,
     session::validate_session_id,
@@ -26,39 +23,26 @@ use serde_json::Value;
 struct SimpleMockLlmClient;
 
 #[async_trait]
-impl LlmClient for SimpleMockLlmClient {
-    async fn chat(
-        &self,
-        _messages: &[ChatMessage],
-        _tools: &[Value],
-        _reasoning: Option<&ReasoningConfig>,
-        _response_format: Option<&ResponseFormat>,
-    ) -> AgentResult<Value> {
-        Ok(serde_json::json!({
-            "choices": [{"message": {"content": "mock response"}}]
-        }))
+impl LlmProvider for SimpleMockLlmClient {
+    async fn stream(&self, _request: ChatRequest) -> Result<ChatStream, LlmError> {
+        Ok(ChatStream::new(Box::pin(EmptyStream)))
     }
-
-    async fn chat_stream(
-        &self,
-        _messages: &[ChatMessage],
-        _tools: &[Value],
-        _reasoning: Option<&ReasoningConfig>,
-        _response_format: Option<&ResponseFormat>,
-    ) -> AgentResult<Pin<Box<dyn Stream<Item = AgentResult<StreamChunk>> + Send>>> {
-        // Return an empty stream — good enough for construction tests
-        Ok(Box::pin(EmptyStream))
+    async fn chat(&self, _request: ChatRequest) -> Result<ChatResponse, LlmError> {
+        Ok(ChatResponse {
+            content: "mock response".to_string(),
+            reasoning_content: None,
+            tool_calls: vec![],
+            usage: UsageInfo::default(),
+            finish_reason: FinishReason::Stop,
+            raw: None,
+            thinking_signature: None,
+        })
     }
-
-    fn capabilities(&self) -> LlmCapabilities {
-        LlmCapabilities {
-            supports_streaming: true,
-            supports_tools: true,
-            supports_vision: false,
-            supports_thinking: true,
-            max_context_tokens: Some(128_000),
-            max_output_tokens: Some(16_384),
-        }
+    fn capabilities(&self) -> Capabilities {
+        Capabilities::default()
+    }
+    fn info(&self) -> ProviderInfo {
+        ProviderInfo { name: "mock".to_string(), model: "mock-model".to_string(), version: None }
     }
 }
 
@@ -66,7 +50,7 @@ impl LlmClient for SimpleMockLlmClient {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_base_agent_builder_constructs() {
-    let client = agent_base::llm::adapt(Arc::new(SimpleMockLlmClient));
+    let client = Arc::new(SimpleMockLlmClient);
     let builder = base_agent_builder(client)
         .system_prompt("You are a helpful assistant.")
         .register_tool(agent_base::UpdatePlanTool::new());
@@ -167,7 +151,7 @@ impl Tool for CustomTool {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_list_tools_returns_metadata() {
-    let client = agent_base::llm::adapt(Arc::new(SimpleMockLlmClient));
+    let client = Arc::new(SimpleMockLlmClient);
     let builder = base_agent_builder(client)
         .system_prompt("You are a helpful assistant.")
         .register_tool(agent_base::UpdatePlanTool::new())
@@ -201,7 +185,7 @@ async fn test_list_tools_returns_metadata() {
 // ── PhiAgent lifecycle ──
 
 fn build_test_agent() -> phi_agent::PhiAgent {
-    let client = agent_base::llm::adapt(Arc::new(SimpleMockLlmClient));
+    let client = Arc::new(SimpleMockLlmClient);
     let builder = base_agent_builder(client).system_prompt("You are a helpful assistant.");
     let config = PhiAgentConfig {
         model: "test-model".into(),
@@ -236,7 +220,7 @@ async fn test_phi_agent_set_reasoning_effort() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_phi_agent_list_tools_sorted() {
-    let client = agent_base::llm::adapt(Arc::new(SimpleMockLlmClient));
+    let client = Arc::new(SimpleMockLlmClient);
     let builder = base_agent_builder(client)
         .system_prompt("You are a helpful assistant.")
         .register_tool(agent_base::UpdatePlanTool::new())
@@ -305,7 +289,7 @@ fn test_system_prompt_cn_also_has_memory_instructions() {
 #[cfg(feature = "file")]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_base_agent_builder_registers_file_tools() {
-    let client = agent_base::llm::adapt(Arc::new(SimpleMockLlmClient));
+    let client = Arc::new(SimpleMockLlmClient);
     let builder = base_agent_builder(client).system_prompt("test");
 
     let config = PhiAgentConfig {
@@ -328,7 +312,7 @@ async fn test_base_agent_builder_registers_file_tools() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_base_agent_builder_registers_update_plan() {
-    let client = agent_base::llm::adapt(Arc::new(SimpleMockLlmClient));
+    let client = Arc::new(SimpleMockLlmClient);
     let builder = base_agent_builder(client).system_prompt("test");
 
     let config = PhiAgentConfig {
@@ -350,7 +334,7 @@ async fn test_base_agent_builder_registers_update_plan() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_no_skill_specific_tools_registered() {
-    let client = agent_base::llm::adapt(Arc::new(SimpleMockLlmClient));
+    let client = Arc::new(SimpleMockLlmClient);
     let builder = base_agent_builder(client).system_prompt("test");
 
     let config = PhiAgentConfig {

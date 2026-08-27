@@ -9,7 +9,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use agent_base::{AgentResult, ChatMessage, LlmCapabilities, LlmClient, ReasoningConfig, ResponseFormat, StreamChunk};
+use agent_base::llm_trait::response::FinishReason;
+use agent_base::llm_trait::{Capabilities, ChatRequest, ChatResponse, ChatStream, LlmError, LlmProvider, ProviderInfo};
+use agent_base::{StreamChunk, UsageInfo};
 use async_trait::async_trait;
 use futures_core::Stream;
 use phi_agent::bridge::server::ProtocolServer;
@@ -17,14 +19,14 @@ use phi_agent::{
     ApprovalMode, AutoApprovalHandler, SafetyConfig, TurnFactMiddleware, TurnToolLimitMiddleware, base_agent_builder,
     build_system_prompt,
 };
-use serde_json::{Value, json};
+use serde_json::Value;
 
 // ── EmptyStream — stubs chat_stream() ─────────────────────────────────
 
 pub struct EmptyStream;
 
 impl Stream for EmptyStream {
-    type Item = AgentResult<StreamChunk>;
+    type Item = Result<StreamChunk, LlmError>;
 
     fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Poll::Ready(None)
@@ -50,59 +52,49 @@ impl MockLlmClient {
 }
 
 #[async_trait]
-impl LlmClient for MockLlmClient {
-    async fn chat(
-        &self,
-        _messages: &[ChatMessage],
-        _tools: &[Value],
-        _reasoning: Option<&ReasoningConfig>,
-        _response_format: Option<&ResponseFormat>,
-    ) -> AgentResult<Value> {
+impl LlmProvider for MockLlmClient {
+    async fn stream(&self, _request: ChatRequest) -> Result<ChatStream, LlmError> {
+        Ok(ChatStream::new(Box::pin(EmptyStream)))
+    }
+    async fn chat(&self, _request: ChatRequest) -> Result<ChatResponse, LlmError> {
         let tc = self.tool_call_response.lock().await.take();
         if let Some((name, args)) = tc {
-            Ok(json!({
-                "choices": [{
-                    "message": {
-                        "tool_calls": [{
-                            "id": "call-test-1",
-                            "type": "function",
-                            "function": {"name": name, "arguments": args}
-                        }]
-                    }
-                }]
-            }))
+            Ok(ChatResponse {
+                content: String::new(),
+                reasoning_content: None,
+                tool_calls: vec![agent_base::llm_trait::response::ToolCall {
+                    id: "call-test-1".to_string(),
+                    name,
+                    arguments: args,
+                }],
+                usage: UsageInfo::default(),
+                finish_reason: FinishReason::ToolCalls,
+                raw: None,
+                thinking_signature: None,
+            })
         } else {
-            Ok(json!({
-                "choices": [{"message": {"content": self.text_response.clone()}}]
-            }))
+            Ok(ChatResponse {
+                content: self.text_response.clone(),
+                reasoning_content: None,
+                tool_calls: vec![],
+                usage: UsageInfo::default(),
+                finish_reason: FinishReason::Stop,
+                raw: None,
+                thinking_signature: None,
+            })
         }
     }
-
-    async fn chat_stream(
-        &self,
-        _messages: &[ChatMessage],
-        _tools: &[Value],
-        _reasoning: Option<&ReasoningConfig>,
-        _response_format: Option<&ResponseFormat>,
-    ) -> AgentResult<Pin<Box<dyn Stream<Item = AgentResult<StreamChunk>> + Send>>> {
-        Ok(Box::pin(EmptyStream))
+    fn capabilities(&self) -> Capabilities {
+        Capabilities::default()
     }
-
-    fn capabilities(&self) -> LlmCapabilities {
-        LlmCapabilities {
-            supports_streaming: true,
-            supports_tools: true,
-            supports_vision: false,
-            supports_thinking: true,
-            max_context_tokens: Some(128_000),
-            max_output_tokens: Some(16_384),
-        }
+    fn info(&self) -> ProviderInfo {
+        ProviderInfo { name: "mock".to_string(), model: "mock-model".to_string(), version: None }
     }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-pub fn build_server(mock: Arc<dyn agent_base::StreamClient>) -> ProtocolServer {
+pub fn build_server(mock: Arc<dyn LlmProvider>) -> ProtocolServer {
     let builder = base_agent_builder(mock)
         .system_prompt(build_system_prompt())
         .approval_handler(Arc::new(AutoApprovalHandler::new(ApprovalMode::Auto)))

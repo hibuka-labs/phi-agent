@@ -19,9 +19,11 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::task::{Context, Poll};
 
+use agent_base::llm_trait::response::{FinishReason, ToolCall};
+use agent_base::llm_trait::{Capabilities, ChatRequest, ChatResponse, ChatStream, LlmError, LlmProvider, ProviderInfo};
 use agent_base::{
-    AgentResult, ApprovalRequest, ChatMessage, Content, LlmCapabilities, LlmClient, Middleware, PostLlmCtx,
-    ReasoningConfig, ResponseFormat, RuntimeEvent, StreamChunk, Tool, ToolContext, ToolPolicy,
+    AgentResult, ApprovalRequest, Content, Middleware, PostLlmCtx, RuntimeEvent, StreamChunk, Tool, ToolContext,
+    ToolPolicy,
 };
 use async_trait::async_trait;
 use futures_core::Stream;
@@ -32,11 +34,11 @@ use serde_json::{Value, json};
 
 /// A simple stream that yields items from a queue.
 struct QueueStream {
-    items: VecDeque<AgentResult<StreamChunk>>,
+    items: VecDeque<Result<StreamChunk, LlmError>>,
 }
 
 impl Stream for QueueStream {
-    type Item = AgentResult<StreamChunk>;
+    type Item = Result<StreamChunk, LlmError>;
     fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Poll::Ready(self.items.pop_front())
     }
@@ -53,50 +55,8 @@ impl MockLlmClient {
 }
 
 #[async_trait]
-impl LlmClient for MockLlmClient {
-    async fn chat(
-        &self,
-        _messages: &[ChatMessage],
-        _tools: &[Value],
-        _reasoning: Option<&ReasoningConfig>,
-        _response_format: Option<&ResponseFormat>,
-    ) -> AgentResult<Value> {
-        let count = self.call_count.fetch_add(1, Ordering::SeqCst);
-        if count == 0 {
-            Ok(json!({
-                "choices": [{
-                    "message": {
-                        "content": "",
-                        "tool_calls": [{
-                            "id": "call_1",
-                            "type": "function",
-                            "function": {
-                                "name": "echo",
-                                "arguments": "{\"msg\": \"hello from hook demo\"}"
-                            }
-                        }]
-                    }
-                }]
-            }))
-        } else {
-            Ok(json!({
-                "choices": [{
-                    "message": {
-                        "content": "All hooks and events demonstrated!",
-                        "tool_calls": null
-                    }
-                }]
-            }))
-        }
-    }
-
-    async fn chat_stream(
-        &self,
-        _messages: &[ChatMessage],
-        _tools: &[Value],
-        _reasoning: Option<&ReasoningConfig>,
-        _response_format: Option<&ResponseFormat>,
-    ) -> AgentResult<Pin<Box<dyn Stream<Item = AgentResult<StreamChunk>> + Send>>> {
+impl LlmProvider for MockLlmClient {
+    async fn stream(&self, _request: ChatRequest) -> Result<ChatStream, LlmError> {
         let count = self.call_count.fetch_add(1, Ordering::SeqCst);
         let mut items = VecDeque::new();
         if count == 0 {
@@ -118,18 +78,44 @@ impl LlmClient for MockLlmClient {
             items.push_back(Ok(StreamChunk::Text("All hooks and events demonstrated!".to_string())));
         }
         items.push_back(Ok(StreamChunk::Stop { finish_reason: Some("stop".to_string()) }));
-        Ok(Box::pin(QueueStream { items }))
+        Ok(ChatStream::new(Box::pin(QueueStream { items })))
     }
 
-    fn capabilities(&self) -> LlmCapabilities {
-        LlmCapabilities {
-            supports_streaming: true,
-            supports_tools: true,
-            supports_vision: false,
-            supports_thinking: false,
-            max_context_tokens: Some(128_000),
-            max_output_tokens: Some(16_384),
+    async fn chat(&self, _request: ChatRequest) -> Result<ChatResponse, LlmError> {
+        let count = self.call_count.fetch_add(1, Ordering::SeqCst);
+        if count == 0 {
+            Ok(ChatResponse {
+                content: String::new(),
+                reasoning_content: None,
+                tool_calls: vec![ToolCall {
+                    id: "call_1".to_string(),
+                    name: "echo".to_string(),
+                    arguments: "{\"msg\": \"hello from hook demo\"}".to_string(),
+                }],
+                usage: agent_base::UsageInfo::default(),
+                finish_reason: FinishReason::ToolCalls,
+                raw: None,
+                thinking_signature: None,
+            })
+        } else {
+            Ok(ChatResponse {
+                content: "All hooks and events demonstrated!".to_string(),
+                reasoning_content: None,
+                tool_calls: vec![],
+                usage: agent_base::UsageInfo::default(),
+                finish_reason: FinishReason::Stop,
+                raw: None,
+                thinking_signature: None,
+            })
         }
+    }
+
+    fn capabilities(&self) -> Capabilities {
+        Capabilities { supports_streaming: true, supports_tools: true, ..Default::default() }
+    }
+
+    fn info(&self) -> ProviderInfo {
+        ProviderInfo { name: "mock".into(), model: "mock".into(), version: None }
     }
 }
 
@@ -229,7 +215,7 @@ async fn main() -> anyhow::Result<()> {
     println!("=== Custom Policy Demo ===\n");
     println!("This example demonstrates ToolPolicy, Middleware, and RuntimeEvent hooks.\n");
 
-    let llm_client = agent_base::llm::adapt(Arc::new(MockLlmClient::new()));
+    let llm_client = Arc::new(MockLlmClient::new());
     let policy = Arc::new(DemoPolicy::new());
 
     let runtime = base_agent_builder(llm_client)

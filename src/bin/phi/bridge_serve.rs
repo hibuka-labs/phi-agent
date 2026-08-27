@@ -12,8 +12,8 @@ use phi_agent::bridge::messages::{IncomingMessage, OutgoingMessage, PROTOCOL_VER
 use phi_agent::bridge::server::ProtocolServer;
 use phi_agent::config::resolve_llm_config;
 use phi_agent::{
-    ApprovalMode, AutoApprovalHandler, OpenAiClient, SafetyConfig, TurnFactMiddleware, TurnToolLimitMiddleware,
-    base_agent_builder, build_system_prompt,
+    ApprovalMode, AutoApprovalHandler, SafetyConfig, TurnFactMiddleware, TurnToolLimitMiddleware, base_agent_builder,
+    build_system_prompt,
 };
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
 
@@ -37,11 +37,13 @@ pub async fn run() -> anyhow::Result<()> {
     // lifetime of this process.  SDKs control model selection by
     // setting LLM_MODEL/LLM_API_KEY/LLM_BASE_URL before spawning.
     let llm_config = resolve_llm_config(None, None)?;
-    let llm_client = Arc::new(OpenAiClient::new(
-        llm_config.api_key.clone(),
-        llm_config.model.clone(),
-        Some(llm_config.base_url.clone()),
-    ));
+    let llm_client = llm_unified::create_provider(&agent_base::llm_trait::LlmConfig {
+        protocol: None,
+        api_key: llm_config.api_key.clone(),
+        model: llm_config.model.clone(),
+        base_url: llm_config.base_url.clone(),
+        options: std::collections::HashMap::new(),
+    })?;
 
     let builder = base_agent_builder(llm_client)
         .system_prompt(build_system_prompt())

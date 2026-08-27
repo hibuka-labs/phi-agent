@@ -106,7 +106,7 @@ pub async fn run_compact_session(
 /// - `app` meta: browser (NOT included in `full`)
 /// - `full`: file + shell + mcp + telemetry + logging (excludes browser and multi-agent)
 #[allow(unused_mut)]
-pub fn base_agent_builder(llm_client: Arc<dyn agent_base::StreamClient>) -> agent_works::AgentBuilder {
+pub fn base_agent_builder(llm_client: Arc<dyn agent_base::llm_trait::LlmProvider>) -> agent_works::AgentBuilder {
     base_agent_builder_with_excludes(llm_client, Vec::new())
 }
 
@@ -116,7 +116,7 @@ pub fn base_agent_builder(llm_client: Arc<dyn agent_base::StreamClient>) -> agen
 /// defaults to no excludes; the consumer decides what counts as noise.
 #[allow(unused_mut)]
 pub fn base_agent_builder_with_excludes(
-    llm_client: Arc<dyn agent_base::StreamClient>,
+    llm_client: Arc<dyn agent_base::llm_trait::LlmProvider>,
     file_excludes: Vec<String>,
 ) -> agent_works::AgentBuilder {
     base_agent_builder_with_options(llm_client, file_excludes, None)
@@ -127,7 +127,7 @@ pub fn base_agent_builder_with_excludes(
 /// middleware.  Pass `None` to use the defaults.
 #[allow(unused_mut)]
 pub fn base_agent_builder_with_options(
-    llm_client: Arc<dyn agent_base::StreamClient>,
+    llm_client: Arc<dyn agent_base::llm_trait::LlmProvider>,
     file_excludes: Vec<String>,
     compression_config: Option<CompressionConfig>,
 ) -> agent_works::AgentBuilder {
@@ -262,56 +262,53 @@ mod tests {
     struct EmptyStream;
 
     impl Stream for EmptyStream {
-        type Item = agent_base::AgentResult<agent_base::StreamChunk>;
+        type Item = Result<agent_base::StreamChunk, agent_base::llm_trait::LlmError>;
         fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             Poll::Ready(None)
         }
     }
 
     #[async_trait]
-    impl agent_base::LlmClient for StubClient {
+    impl agent_base::llm_trait::LlmProvider for StubClient {
+        async fn stream(
+            &self,
+            _request: agent_base::llm_trait::ChatRequest,
+        ) -> Result<agent_base::llm_trait::ChatStream, agent_base::llm_trait::LlmError> {
+            Ok(agent_base::llm_trait::ChatStream::new(Box::pin(EmptyStream)))
+        }
         async fn chat(
             &self,
-            _messages: &[agent_base::ChatMessage],
-            _tools: &[serde_json::Value],
-            _reasoning: Option<&agent_base::ReasoningConfig>,
-            _response_format: Option<&agent_base::ResponseFormat>,
-        ) -> agent_base::AgentResult<serde_json::Value> {
-            Ok(serde_json::json!({"choices":[{"message":{"content":"stub"}}]}))
+            _request: agent_base::llm_trait::ChatRequest,
+        ) -> Result<agent_base::llm_trait::ChatResponse, agent_base::llm_trait::LlmError> {
+            Ok(agent_base::llm_trait::ChatResponse {
+                content: "stub".to_string(),
+                reasoning_content: None,
+                tool_calls: vec![],
+                usage: agent_base::UsageInfo::default(),
+                finish_reason: agent_base::llm_trait::FinishReason::Stop,
+                raw: None,
+                thinking_signature: None,
+            })
         }
-        async fn chat_stream(
-            &self,
-            _messages: &[agent_base::ChatMessage],
-            _tools: &[serde_json::Value],
-            _reasoning: Option<&agent_base::ReasoningConfig>,
-            _response_format: Option<&agent_base::ResponseFormat>,
-        ) -> agent_base::AgentResult<Pin<Box<dyn Stream<Item = agent_base::AgentResult<agent_base::StreamChunk>> + Send>>>
-        {
-            Ok(Box::pin(EmptyStream))
+        fn capabilities(&self) -> agent_base::llm_trait::Capabilities {
+            agent_base::llm_trait::Capabilities::default()
         }
-        fn capabilities(&self) -> agent_base::LlmCapabilities {
-            agent_base::LlmCapabilities {
-                supports_streaming: true,
-                supports_tools: true,
-                supports_vision: false,
-                supports_thinking: true,
-                max_context_tokens: Some(128_000),
-                max_output_tokens: Some(16_384),
-            }
+        fn info(&self) -> agent_base::llm_trait::ProviderInfo {
+            agent_base::llm_trait::ProviderInfo { name: "stub".to_string(), model: "stub".to_string(), version: None }
         }
     }
 
     #[test]
     fn test_max_tool_output_chars_default() {
         unsafe { std::env::remove_var("PHI_MAX_TOOL_OUTPUT_CHARS") };
-        let builder = base_agent_builder(agent_base::llm::adapt(Arc::new(StubClient)));
+        let builder = base_agent_builder(Arc::new(StubClient));
         let _ = builder;
     }
 
     #[test]
     fn test_max_tool_output_chars_custom() {
         unsafe { std::env::set_var("PHI_MAX_TOOL_OUTPUT_CHARS", "8000") };
-        let builder = base_agent_builder(agent_base::llm::adapt(Arc::new(StubClient)));
+        let builder = base_agent_builder(Arc::new(StubClient));
         let _ = builder;
         unsafe { std::env::remove_var("PHI_MAX_TOOL_OUTPUT_CHARS") };
     }
@@ -319,7 +316,7 @@ mod tests {
     #[test]
     fn test_max_tool_output_chars_invalid_fallback() {
         unsafe { std::env::set_var("PHI_MAX_TOOL_OUTPUT_CHARS", "not-a-number") };
-        let builder = base_agent_builder(agent_base::llm::adapt(Arc::new(StubClient)));
+        let builder = base_agent_builder(Arc::new(StubClient));
         let _ = builder;
         unsafe { std::env::remove_var("PHI_MAX_TOOL_OUTPUT_CHARS") };
     }
@@ -328,7 +325,7 @@ mod tests {
     #[cfg(feature = "multi-agent")]
     #[tokio::test(flavor = "multi_thread")]
     async fn test_base_agent_builder_registers_multi_agent_tools() {
-        let builder = base_agent_builder(agent_base::llm::adapt(Arc::new(StubClient))).system_prompt("test");
+        let builder = base_agent_builder(Arc::new(StubClient)).system_prompt("test");
 
         let runtime = builder.build().unwrap();
 
@@ -350,9 +347,7 @@ mod tests {
     #[cfg(feature = "multi-agent")]
     #[tokio::test(flavor = "multi_thread")]
     async fn test_base_agent_builder_without_multi_agent() {
-        let builder = base_agent_builder(agent_base::llm::adapt(Arc::new(StubClient)))
-            .system_prompt("test")
-            .without_multi_agent();
+        let builder = base_agent_builder(Arc::new(StubClient)).system_prompt("test").without_multi_agent();
 
         let runtime = builder.build().unwrap();
 

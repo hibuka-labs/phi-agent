@@ -18,8 +18,8 @@ use std::sync::Arc;
 use agent_works::mcp::{McpServeConfig, McpServerTransport};
 use phi_agent::config::resolve_llm_config;
 use phi_agent::{
-    ApprovalMode, AutoApprovalHandler, OpenAiClient, PhiAgent, SafetyConfig, TurnFactMiddleware,
-    TurnToolLimitMiddleware, base_agent_builder, build_system_prompt,
+    ApprovalMode, AutoApprovalHandler, PhiAgent, SafetyConfig, TurnFactMiddleware, TurnToolLimitMiddleware,
+    base_agent_builder, build_system_prompt,
 };
 
 /// Run the MCP server.
@@ -29,11 +29,13 @@ use phi_agent::{
 pub async fn run(http: Option<u16>) -> anyhow::Result<()> {
     // 1. Resolve LLM config
     let llm_config = resolve_llm_config(None, None)?;
-    let llm_client = Arc::new(OpenAiClient::new(
-        llm_config.api_key.clone(),
-        llm_config.model.clone(),
-        Some(llm_config.base_url.clone()),
-    ));
+    let llm_client = llm_unified::create_provider(&agent_base::llm_trait::LlmConfig {
+        protocol: None,
+        api_key: llm_config.api_key.clone(),
+        model: llm_config.model.clone(),
+        base_url: llm_config.base_url.clone(),
+        options: std::collections::HashMap::new(),
+    })?;
 
     // 2. Build agent
     let builder = base_agent_builder(llm_client)
