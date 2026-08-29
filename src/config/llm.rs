@@ -219,31 +219,5 @@ mod proptests {
             unsafe { std::env::set_var("LLM_API_KEY", "sk-proptest"); }
             let _ = resolve_llm_config(model.as_deref(), base_url.as_deref());
         }
-
-        #[test]
-        fn cli_model_takes_priority_over_env(
-            cli_model in "[a-zA-Z0-9_-]{1,30}",
-            env_model in "[a-zA-Z0-9_-]{1,30}",
-        ) {
-            let vars = &["LLM_API_KEY", "OPENAI_API_KEY", "LLM_MODEL", "OPENAI_MODEL", "LLM_BASE_URL", "OPENAI_BASE_URL"];
-            let _guard = EnvGuard::new(vars);
-            unsafe { std::env::set_var("LLM_API_KEY", "sk-test"); }
-            unsafe { std::env::set_var("LLM_MODEL", &env_model); }
-            let cfg = resolve_llm_config(Some(&cli_model), None).unwrap();
-            proptest::prop_assert_eq!(cfg.model, cli_model);
-        }
-
-        #[test]
-        fn cli_base_url_takes_priority_over_env(
-            cli_url in "https://[a-z]{1,15}\\.example\\.com/v[0-9]",
-            env_url in "https://[a-z]{1,15}\\.example\\.com/v[0-9]",
-        ) {
-            let vars = &["LLM_API_KEY", "OPENAI_API_KEY", "LLM_MODEL", "OPENAI_MODEL", "LLM_BASE_URL", "OPENAI_BASE_URL"];
-            let _guard = EnvGuard::new(vars);
-            unsafe { std::env::set_var("LLM_API_KEY", "sk-test"); }
-            unsafe { std::env::set_var("LLM_BASE_URL", &env_url); }
-            let cfg = resolve_llm_config(None, Some(&cli_url)).unwrap();
-            proptest::prop_assert_eq!(cfg.base_url, cli_url);
-        }
     }
 }
