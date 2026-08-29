@@ -10,29 +10,6 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "agent-base"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4775c5d485ee38bd37f07b75a39335daaa855a9351b6273903cc86c8d5c3500"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "eventsource-stream",
- "futures-core",
- "futures-util",
- "reqwest",
- "schemars",
- "serde",
- "serde_json",
- "thiserror 2.0.20",
- "tokio",
- "tokio-util",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "agent-base"
 version = "0.4.0"
 dependencies = [
  "agent-types",
@@ -43,8 +20,8 @@ dependencies = [
  "eventsource-stream",
  "futures-core",
  "futures-util",
- "llm-trait 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "llm-unified 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "llm-trait",
+ "llm-unified",
  "reqwest",
  "schemars",
  "serde",
@@ -60,7 +37,7 @@ dependencies = [
 name = "agent-types"
 version = "0.1.0"
 dependencies = [
- "llm-trait 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "llm-trait",
  "serde",
  "serde_json",
 ]
@@ -69,7 +46,7 @@ dependencies = [
 name = "agent-works"
 version = "0.5.0"
 dependencies = [
- "agent-base 0.4.0",
+ "agent-base",
  "async-trait",
  "dyn-clone",
  "futures-core",
@@ -1519,21 +1496,6 @@ checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 [[package]]
 name = "llm-trait"
 version = "0.1.1"
-dependencies = [
- "async-trait",
- "bytes",
- "futures-core",
- "futures-util",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.20",
- "tracing",
-]
-
-[[package]]
-name = "llm-trait"
-version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "642ba36b46eae992f9b5deb67b9337123584905ff8e182077265375ee4c8b260"
 dependencies = [
@@ -1551,24 +1513,6 @@ dependencies = [
 [[package]]
 name = "llm-unified"
 version = "0.1.1"
-dependencies = [
- "async-trait",
- "clap",
- "eventsource-stream",
- "futures-core",
- "futures-util",
- "llm-trait 0.1.1",
- "rand 0.9.5",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "llm-unified"
-version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82e9f080946fff31851b52d570e666202bddde8da4c31338a0f307e2f172b092"
 dependencies = [
@@ -1577,7 +1521,7 @@ dependencies = [
  "eventsource-stream",
  "futures-core",
  "futures-util",
- "llm-trait 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "llm-trait",
  "rand 0.9.5",
  "reqwest",
  "serde",
@@ -1869,7 +1813,7 @@ dependencies = [
 name = "phi-agent"
 version = "0.13.0"
 dependencies = [
- "agent-base 0.4.0",
+ "agent-base",
  "agent-works",
  "anyhow",
  "async-trait",
@@ -1882,7 +1826,7 @@ dependencies = [
  "fs2",
  "futures-core",
  "futures-util",
- "llm-unified 0.1.1",
+ "llm-unified",
  "log-core",
  "phi-kernel-tools",
  "phi-telemetry",
@@ -1907,7 +1851,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76d3a9f6ffc01e43b7b38bc2f5303f889a37526b688219d6ec2260d50d09d41f"
 dependencies = [
- "agent-base 0.4.0",
+ "agent-base",
  "agent-works",
  "async-trait",
  "ignore",
@@ -1922,11 +1866,11 @@ dependencies = [
 
 [[package]]
 name = "phi-telemetry"
-version = "0.2.2"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19c4bd6463bd5f6b49d41ddd267e5bac927f6cab57917621152775a234821ed0"
+checksum = "b4341a738419c1a1868b7684facf5b8ffa2593094eed4c7c4c66a319eff29ec3"
 dependencies = [
- "agent-base 0.3.1",
+ "agent-base",
  "anyhow",
  "chrono",
  "serde",
@@ -1941,7 +1885,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7dd8408a1c18308117f0cbdfa6f8acbdc57783564f8255df103b39ca2abda499"
 dependencies = [
- "agent-base 0.4.0",
+ "agent-base",
  "anyhow",
  "async-trait",
  "base64 0.22.1",
