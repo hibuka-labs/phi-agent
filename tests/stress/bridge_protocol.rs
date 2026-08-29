@@ -10,6 +10,7 @@
 use agent_base::llm_trait::response::FinishReason;
 use agent_base::llm_trait::{Capabilities, ChatRequest, ChatResponse, ChatStream, LlmError, LlmProvider, ProviderInfo};
 use agent_base::{Content, StreamChunk, UsageInfo};
+use futures_core::Stream;
 use phi_agent::base_agent_builder;
 use phi_agent::bridge::server::ProtocolServer;
 use phi_agent::build_system_prompt;

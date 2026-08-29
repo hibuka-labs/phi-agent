@@ -1,7 +1,7 @@
 //! phi-agent specific prompt fragments.
 //!
 //! These fragments implement the phi-agent system prompt using the
-//! [`PromptFragment`](agent_works::PromptFragment) trait from agent-works.
+//! [`PromptFragment`] trait from agent-works.
 //!
 //! # Priority map
 //!

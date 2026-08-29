@@ -8,7 +8,7 @@
 //!
 //! # Architecture
 //!
-//! phi-agent defines application-specific fragments in the [`fragments`] module.
+//! phi-agent defines application-specific fragments in the [`crate::prompt::fragments`] module.
 //! Generic fragments (environment, dynamic tools) come from
 //! [`agent_works::prompt`]. Consumers inject custom fragments via
 //! [`build_system_prompt_with_fragments`].
