@@ -161,7 +161,13 @@ pub fn base_agent_builder_with_options(
         .max_sessions(50)
         .max_turns_per_session(100)
         .execution_max_turns(200)
-        .max_message_tokens(50_000)
+        // Session 20260904_c6559510: the fan-in batch injection (all child
+        // reports in one message) hit this valve and was SILENTLY popped —
+        // the parent turned without any reports and hallucinated a synthesis.
+        // 50k was sized for single user inputs, not multi-report batches.
+        // Injection senders still cap their own payloads; this valve is the
+        // last-resort guard, not the size manager.
+        .max_message_tokens(120_000)
         .max_tool_output_chars(max_tool_output_chars)
         .error_recovery(Arc::new(ConsecutiveFailureRecovery::new(3)));
 
@@ -199,9 +205,15 @@ pub fn base_agent_builder_with_options(
     #[cfg(feature = "multi-agent")]
     {
         use agent_works::multi_agent::MultiAgentConfig;
+        // Children share this process's cwd (phimint chdir's to the workspace
+        // at startup), so it is the base their relative paths resolve against.
+        // Injected as a fact into each child's system prompt — session
+        // 20260904_3eeb5610: a child silently analyzed the wrong directory
+        // because nothing told it where its relative paths land.
+        let ma_cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         builder =
-            builder.with_multi_agent(MultiAgentConfig::default()).with_multi_agent_tool_factory(Arc::new(|runtime| {
-                phi_kernel_tools::multi_agent::create_all_tools(runtime)
+            builder.with_multi_agent(MultiAgentConfig::default()).with_multi_agent_tool_factory(Arc::new(move |runtime| {
+                phi_kernel_tools::multi_agent::create_all_tools(runtime, ma_cwd.clone())
             }));
     }
 
@@ -321,7 +333,7 @@ mod tests {
         unsafe { std::env::remove_var("PHI_MAX_TOOL_OUTPUT_CHARS") };
     }
 
-    /// Verify that the default `base_agent_builder()` registers the 6 multi-agent tools.
+    /// Verify that the default `base_agent_builder()` registers the 4 multi-agent tools.
     #[cfg(feature = "multi-agent")]
     #[tokio::test(flavor = "multi_thread")]
     async fn test_base_agent_builder_registers_multi_agent_tools() {
@@ -337,8 +349,13 @@ mod tests {
 
         assert!(tools.contains(&"spawn_agent".to_string()), "expected spawn_agent tool");
         assert!(tools.contains(&"send_message".to_string()), "expected send_message tool");
-        assert!(tools.contains(&"followup_task".to_string()), "expected followup_task tool");
-        assert!(tools.contains(&"wait_agent".to_string()), "expected wait_agent tool");
+        // followup_task is deprecated and dropped from the factory (agent-works
+        // §8.3); its trigger semantics now live in send_message(trigger=true).
+        assert!(!tools.contains(&"followup_task".to_string()), "followup_task must not be registered");
+        // wait_agent was removed with the result-push model (agent-works §8.3):
+        // child results are pushed to the parent's mailbox automatically, so
+        // there is nothing left to poll.
+        assert!(!tools.contains(&"wait_agent".to_string()), "wait_agent must not be registered");
         assert!(tools.contains(&"list_agents".to_string()), "expected list_agents tool");
         assert!(tools.contains(&"close_agent".to_string()), "expected close_agent tool");
     }

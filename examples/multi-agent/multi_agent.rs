@@ -1,8 +1,8 @@
 //! Multi-Agent example — demonstrates sub-agent spawning and lifecycle.
 //!
-//! This example enables multi-agent mode, which gives the LLM 6 tools
-//! (spawn_agent, send_message, followup_task, wait_agent, list_agents,
-//! close_agent) for dynamic task decomposition.
+//! This example enables multi-agent mode, which gives the LLM 4 tools
+//! (spawn_agent, send_message, list_agents, close_agent)
+//! for dynamic task decomposition.
 //!
 //! The LLM can spawn sub-agents that run concurrently, communicate with
 //! them, collect results, and close them when done.

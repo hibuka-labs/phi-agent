@@ -492,6 +492,7 @@ mod tests {
                 agent_id: None,
                 trace_id: None,
                 denied: false,
+                            details: None,
             },
         );
         assert!(out.contains("file contents here"));
@@ -511,6 +512,7 @@ mod tests {
                 agent_id: None,
                 trace_id: None,
                 denied: false,
+                            details: None,
             },
         );
         assert!(!out.contains(&long));

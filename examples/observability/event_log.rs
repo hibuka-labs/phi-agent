@@ -41,6 +41,7 @@ fn main() -> anyhow::Result<()> {
             agent_id: None,
             trace_id: None,
             denied: false,
+            details: None,
         },
         phi_agent::RuntimeEvent::TextDelta {
             session_id: session_id.clone(),

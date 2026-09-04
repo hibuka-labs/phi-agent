@@ -46,7 +46,9 @@ pub use phi_telemetry::{
 #[cfg(feature = "focus")]
 pub use agent_works::focus::{Context as FocusContext, Focus, FocusError, FocusInput, FocusOutput};
 #[cfg(feature = "multi-agent")]
-pub use agent_works::multi_agent::{ChildPermissionMode, MultiAgentConfig};
+pub use agent_works::multi_agent::{
+    ChildPermissionMode, ChildReport, ChildResultEvent, ControlConfig, MultiAgentConfig,
+};
 
 // ── MCP (feature-gated) ──
 #[cfg(feature = "mcp")]

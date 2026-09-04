@@ -6,7 +6,7 @@ phi-agent provides kernel primitives via feature flags. `file` is on by default;
 |----------|---------|-------|---------|
 | File | `file` | `read_file`, `write_file`, `edit_file`, `list_files` | **On** |
 | Shell | `shell` | `execute_command` | Off |
-| Multi-Agent | `multi-agent` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`, `close_agent` | Off |
+| Multi-Agent | `multi-agent` | `spawn_agent`, `send_message`, `wait_agent`, `list_agents`, `close_agent` | Off |
 
 ## Enabling
 

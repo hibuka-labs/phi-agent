@@ -245,6 +245,7 @@ mod tests {
             agent_id: None,
             trace_id: None,
             denied: false,
+                            details: None,
         });
         let v: serde_json::Value = serde_json::from_str(&lines[0]).unwrap();
         assert_eq!(v["type"], "tool_call_finished");

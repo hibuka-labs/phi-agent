@@ -48,6 +48,9 @@ pub struct PhiAgent {
     /// MCP hub for runtime server management. Only available with the `mcp` feature.
     #[cfg(feature = "mcp")]
     mcp_hub: Arc<tokio::sync::Mutex<Option<Arc<agent_works::mcp::EnhancedMcpHub>>>>,
+    /// Multi-agent runtime (if multi-agent is enabled).
+    #[cfg(feature = "multi-agent")]
+    ma_runtime: Option<Arc<agent_works::multi_agent::MultiAgentRuntime>>,
 }
 
 impl PhiAgent {
@@ -94,13 +97,23 @@ impl PhiAgent {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn build(builder: AgentBuilder, config: PhiAgentConfig) -> AgentResult<Self> {
-        let runtime = builder.build()?;
+        let (runtime, ma_runtime) = builder.build_with_ma()?;
         Ok(Self {
             runtime,
             config,
             #[cfg(feature = "mcp")]
             mcp_hub: Arc::new(tokio::sync::Mutex::new(None)),
+            #[cfg(feature = "multi-agent")]
+            ma_runtime,
         })
+    }
+
+    /// Get the multi-agent runtime (if multi-agent is enabled).
+    ///
+    /// Returns `None` if multi-agent support was not configured during build.
+    #[cfg(feature = "multi-agent")]
+    pub fn multi_agent_runtime(&self) -> Option<&Arc<agent_works::multi_agent::MultiAgentRuntime>> {
+        self.ma_runtime.as_ref()
     }
 
     /// Create an agent session.

@@ -6,7 +6,7 @@ phi-agent 通过 feature flag 提供内核原语。`file` 默认开启，`shell`
 |------|---------|------|------|
 | 文件 | `file` | `read_file`、`write_file`、`edit_file`、`list_files` | **开启** |
 | Shell | `shell` | `execute_command` | 关闭 |
-| 多 Agent | `multi-agent` | `spawn_agent`、`send_message`、`followup_task`、`wait_agent`、`list_agents`、`close_agent` | 关闭 |
+| 多 Agent | `multi-agent` | `spawn_agent`、`send_message`、`wait_agent`、`list_agents`、`close_agent` | 关闭 |
 
 ## 启用方式
 

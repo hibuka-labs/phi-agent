@@ -37,3 +37,6 @@ docs/brainstorm/
 docs/design/
 docs/llm-testing-strategy/
 tmp/
+
+# Deploy guides (internal)
+deploy/
