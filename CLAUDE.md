@@ -8,7 +8,7 @@ A general-purpose AI Agent framework in Rust, built on `agent-base` and `agent-w
 **phi-agent itself does NOT bundle application tools.** It provides infrastructure only (builder factory, renderers, config, session management). Kernel tools (file I/O, shell, multi-agent) are available via `phi-kernel-tools` behind feature flags. File tools and MCP are on by default; shell and multi-agent are opt-in. Application tools are implemented in `phi-tools` and injected by consumers (CLI, web, etc.).
 
 ### Current Branch
-`master` — the public open-source branch. Browser automation tools (21 tools via CDP) are included behind the `browser` feature gate. Enable with `cargo build --features browser` or `phi --features browser`.
+`main` — the public open-source branch. Browser automation tools (21 tools via CDP) are included behind the `browser` feature gate. Enable with `cargo build --features browser` or `phi --features browser`.
 
 ### Dependency Chain
 
@@ -205,12 +205,12 @@ docs.phi-agent.dev (域名: phiagent.dev, 注册商: 22net)
 - **Building**: `mkdocs build` (MkDocs Material + i18n plugin) → `site/`
 - **Deploy**: `.github/workflows/deploy-docs.yml` — builds then syncs to OSS (oss2 SDK) + GitHub Pages
 - **Manual trigger**: Actions → Deploy Docs → Run workflow (needed after first-time setup or when docs files aren't changed)
-- **Auto trigger**: Push to master with changes in `docs/**`, `mkdocs.yml`, `requirements.txt`, or `deploy-docs.yml`
+- **Auto trigger**: Push to main with changes in `docs/**`, `mkdocs.yml`, `requirements.txt`, or `deploy-docs.yml`
 - **OSS Bucket**: `phiagent-docs` (香港), static website hosting enabled, default page `index.html`
 - **Secrets** (GitHub → Settings → Secrets): `OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET`, `OSS_ENDPOINT`, `OSS_BUCKET`
 
 ### Gotchas
 
 - **log-core** uses `main` as default branch (not `master`) on GitHub — push to `main` not `master`
-- **Phi-tools** browser tools are on master behind `browser` feature flag — no separate branch needed
+- **Phi-tools** browser tools are on main behind `browser` feature flag — no separate branch needed
 - CI clones all 5 repos as siblings with `--depth 1`, so pushed code must be on the default branch
