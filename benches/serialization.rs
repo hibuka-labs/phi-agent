@@ -31,6 +31,7 @@ fn make_tool_finish_event(sid: &SessionId) -> RuntimeEvent {
         agent_id: None,
         trace_id: None,
         denied: false,
+        details: None,
     }
 }
 
@@ -86,6 +87,7 @@ fn bench_jsonl_bulk(c: &mut Criterion) {
                     agent_id: None,
                     trace_id: None,
                     denied: false,
+                    details: None,
                 },
             ]
         })

@@ -98,6 +98,10 @@ impl PhiAgent {
     /// ```
     pub fn build(builder: AgentBuilder, config: PhiAgentConfig) -> AgentResult<Self> {
         let (runtime, ma_runtime) = builder.build_with_ma()?;
+        // Consumed by the struct below under the multi-agent feature; the
+        // discard keeps the default-features build clippy-clean.
+        #[cfg(not(feature = "multi-agent"))]
+        let _ = ma_runtime;
         Ok(Self {
             runtime,
             config,

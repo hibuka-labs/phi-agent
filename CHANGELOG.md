@@ -5,6 +5,24 @@ All notable changes to phi-agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-09-06
+
+### Added
+- Multi-agent runtime and tool-result details exposed in the public API;
+  fan-in batches are kept intact when surfaced to the LLM.
+
+### Changed
+- Dependencies: agent-base 0.5.0, agent-works 0.6.0,
+  phi-kernel-tools 0.6.0, phi-tools 0.5.0, phi-telemetry 0.4.0,
+  llm-trait / llm-unified 0.1.2.
+
+## [0.13.0] - 2026-08-29
+
+### Changed
+- Dependencies: agent-base 0.4.0, agent-works 0.5.0, phi-kernel-tools 0.5.0,
+  phi-tools 0.4.0, phi-telemetry 0.3.0, llm-unified 0.1.1 (path override
+  removed).
+
 ## [0.12.0] - 2026-08-22
 
 ### Breaking

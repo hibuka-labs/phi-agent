@@ -211,10 +211,9 @@ pub fn base_agent_builder_with_options(
         // 20260904_3eeb5610: a child silently analyzed the wrong directory
         // because nothing told it where its relative paths land.
         let ma_cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        builder =
-            builder.with_multi_agent(MultiAgentConfig::default()).with_multi_agent_tool_factory(Arc::new(move |runtime| {
-                phi_kernel_tools::multi_agent::create_all_tools(runtime, ma_cwd.clone())
-            }));
+        builder = builder.with_multi_agent(MultiAgentConfig::default()).with_multi_agent_tool_factory(Arc::new(
+            move |runtime| phi_kernel_tools::multi_agent::create_all_tools(runtime, ma_cwd.clone()),
+        ));
     }
 
     // ── Skills: prompt-injection mode (uses read_file, no skill-specific tools) ──

@@ -145,7 +145,7 @@ mod tests {
             agent_id: None,
             trace_id: None,
             denied: false,
-                            details: None,
+            details: None,
         });
         assert_eq!(v["type"], "tool_call_finished");
         assert_eq!(v["summary"], "done");
@@ -221,7 +221,7 @@ mod tests {
                 agent_id: None,
                 trace_id: None,
                 denied: false,
-                            details: None,
+                details: None,
             },
             RuntimeEvent::RunFinished { session_id: session_id(), agent_id: None, trace_id: None },
             RuntimeEvent::RunCancelled { session_id: session_id(), agent_id: None, trace_id: None },

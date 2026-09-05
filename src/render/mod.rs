@@ -210,7 +210,7 @@ mod tests {
                 agent_id: None,
                 trace_id: None,
                 denied: false,
-                            details: None,
+                details: None,
             })
             .is_ok()
         );
