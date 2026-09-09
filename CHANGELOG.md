@@ -5,6 +5,32 @@ All notable changes to phi-agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Facade completion** — new re-exports so products can depend on `phi-agent`
+  alone (no direct agent-base / agent-works / phi-kernel-tools /
+  llm-unified dependencies):
+  - `llm_trait` (module: `LlmProvider`, `Protocol`, `config::LlmConfig`) and
+    `create_provider` — LLM provider construction via the facade.
+  - `MaxTurnsNudgeConfig` / `MaxTurnsNudgeMiddleware` (agent-base engine).
+  - `UserEvent` (agent-base plan/user lifecycle events).
+  - `DefaultGuard` / `DefaultGuardConfig` / `ReasoningOnlyAction`
+    (agent-works guard).
+  - `AgentSnapshot` / `RegistrySnapshot` (multi-agent registry; behind
+    `multi-agent`).
+  - `ChildResultRoute` / `ChildResultRouter` — child-result fan-in delivery
+    policy with data-only routes (hold-until-idle, per-report clamping cap
+    `MAX_REPORT_CHARS`); UI copy stays with the product (behind `multi-agent`).
+  - `LocalShellTool` (behind `shell`).
+  - `Skill` / `PromptSkill` (behind `skill`).
+
+### Added (sunk down from consumers)
+- `QueuedApprovalHandler` + `ApprovalItem` (`cli::approval`): enqueue each
+  approval request to a channel the UI drains and answer via a per-request
+  oneshot; serializes parallel sub-agent prompts. Sunk down from phimint's
+  TUI layer — any phi-agent UI runtime needs the same pattern.
+
 ## [0.14.0] - 2026-09-06
 
 ### Added

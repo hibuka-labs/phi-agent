@@ -2,4 +2,4 @@
 
 pub mod approval;
 
-pub use approval::{ApprovalMode, AutoApprovalHandler};
+pub use approval::{ApprovalItem, ApprovalMode, AutoApprovalHandler, QueuedApprovalHandler};

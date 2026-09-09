@@ -28,12 +28,19 @@ pub mod session;
 // because phi-agent is a full-stack framework that includes multi-agent, skills, MCP, etc.
 // For the bare runtime builder, use agent_base::AgentBuilder directly.
 pub use agent_base::{
-    AgentError, AgentResult, AgentRuntime, AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler, ApprovalRequest,
-    CheckpointData, CheckpointStep, ConsecutiveFailureRecovery, Content, DenyAllApprovalHandler, FinishReason,
-    Language, Middleware, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx, ReasoningConfig, ReasoningEffort,
-    RetryOnError, RiskLevel, RunOutcome, RuntimeEvent, SafetyConfig, SessionId, Tool, ToolContext, ToolDecision,
-    ToolMetadata, ToolPolicy, ToolRegistry, TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool,
-    UserMessageCtx,
+    AgentError, AgentResult, AgentRuntime, AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler,
+    ApprovalRequest, ChatMessage, CheckpointData, CheckpointStep, ConsecutiveFailureRecovery, Content,
+    DenyAllApprovalHandler, FinishReason, Language, Middleware, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx,
+    ReasoningConfig, ReasoningEffort, RetryOnError, RiskLevel, RunOutcome, RuntimeEvent, SafetyConfig, SessionId,
+    Tool, ToolContext, ToolDecision, ToolMetadata, ToolPolicy, ToolRegistry, TurnFactMiddleware,
+    TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
+    ContextCompaction, ContextWindowManager, estimate_messages_tokens, first_system_prompt,
+};
+// Token-budget window strategy — a pure strategy in agent-works (agent-base
+// stays strategy-free: contract + primitives only).
+pub use agent_works::token_budget::{
+    TokenBudgetAction, TokenBudgetConfig, TokenBudgetCore, TokenBudgetState,
+    DEFAULT_SEED_MESSAGE, build_context_window_info, token_budget_base_overhead,
 };
 pub use agent_works::AgentBuilder;
 
@@ -51,6 +58,36 @@ pub use agent_works::focus::{Context as FocusContext, Focus, FocusError, FocusIn
 pub use agent_works::multi_agent::{
     ChildPermissionMode, ChildReport, ChildResultEvent, ControlConfig, MultiAgentConfig,
 };
+// Child-result fan-in delivery policy — data-only routes; the consumer renders
+// the words. Sunk down from phimint's UI so any multi-agent UI reuses it.
+#[cfg(feature = "multi-agent")]
+pub use agent_works::multi_agent::fan_in::{ChildResultRoute, ChildResultRouter};
+#[cfg(feature = "multi-agent")]
+pub use agent_works::multi_agent::registry::{AgentSnapshot, RegistrySnapshot};
+
+// ── Framework pass-through (facade completion) ──
+// These are the remaining types a product needs to name directly, so its
+// Cargo.toml can depend on `phi-agent` alone. Only actually-consumed items
+// are re-exported — no catch-all facade.
+/// LLM provider trait family (`LlmProvider`, `Protocol`, `config::LlmConfig`):
+/// build a provider with [`create_provider`] and hand it to the runtime.
+pub use agent_base::llm_trait;
+/// Middleware that nudges the model when it nears the turn limit.
+pub use agent_base::engine::max_turns_nudge::{MaxTurnsNudgeConfig, MaxTurnsNudgeMiddleware};
+/// Plan / user lifecycle event types surfaced to consumers.
+pub use agent_base::UserEvent;
+/// Guard policies from agent-works (tool gating, reasoning-only enforcement).
+pub use agent_works::guard::{DefaultGuard, DefaultGuardConfig, ReasoningOnlyAction};
+/// LLM provider factory (resolves protocol/client from an [`llm_trait`] config).
+pub use llm_unified::create_provider;
+
+// ── Kernel tools (feature-gated) ──
+#[cfg(feature = "shell")]
+pub use phi_kernel_tools::local_shell::LocalShellTool;
+
+// ── Skills (feature-gated) ──
+#[cfg(feature = "skill")]
+pub use agent_works::skill::{Skill, prompt_skill::PromptSkill};
 
 // ── MCP (feature-gated) ──
 #[cfg(feature = "mcp")]
@@ -60,13 +97,14 @@ pub use agent_works::mcp::{McpServeConfig, McpServer, McpServerConfig, McpServer
 #[cfg(feature = "compression")]
 pub use agent::CompressionMiddleware;
 pub use agent::{
-    PhiAgent, PhiAgentConfig, base_agent_builder, base_agent_builder_with_excludes, base_agent_builder_with_options,
+    PhiAgent, PhiAgentConfig, base_agent_builder, base_agent_builder_no_compression,
+    base_agent_builder_with_excludes, base_agent_builder_with_options,
     clear_compression_cache, run_compact_session,
 };
 pub use agent_works::prompt::{
     DynamicToolsFragment, EnvironmentFragment, FragmentContext, PromptFragment, compose_fragments,
 };
-pub use cli::{ApprovalMode, AutoApprovalHandler};
+pub use cli::{ApprovalItem, ApprovalMode, AutoApprovalHandler, QueuedApprovalHandler};
 pub use config::{LlmConfig, resolve_llm_config};
 pub use event_log::{event_to_jsonl, event_to_value, save_turn_log};
 pub use prompt::{build_system_prompt, build_system_prompt_cn, build_system_prompt_with_fragments};

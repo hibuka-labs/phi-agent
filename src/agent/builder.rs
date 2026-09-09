@@ -131,6 +131,27 @@ pub fn base_agent_builder_with_options(
     file_excludes: Vec<String>,
     compression_config: Option<CompressionConfig>,
 ) -> agent_works::AgentBuilder {
+    base_agent_builder_with_options_inner(llm_client, file_excludes, compression_config, false)
+}
+
+/// Like [`base_agent_builder_with_options`], but skips registering the
+/// compression middleware entirely. Use when a custom context compactor
+/// (e.g. token-budget window rotation) replaces LLM-based summarization.
+#[allow(unused_mut)]
+pub fn base_agent_builder_no_compression(
+    llm_client: Arc<dyn agent_base::llm_trait::LlmProvider>,
+    file_excludes: Vec<String>,
+) -> agent_works::AgentBuilder {
+    base_agent_builder_with_options_inner(llm_client, file_excludes, None, true)
+}
+
+#[allow(unused_mut)]
+fn base_agent_builder_with_options_inner(
+    llm_client: Arc<dyn agent_base::llm_trait::LlmProvider>,
+    file_excludes: Vec<String>,
+    compression_config: Option<CompressionConfig>,
+    skip_compression: bool,
+) -> agent_works::AgentBuilder {
     // Tool-output cap (default 4000 chars). Tune via PHI_MAX_TOOL_OUTPUT_CHARS for large
     // outputs (HTML, base64 images, long lists). The engine REJECTS output that exceeds
     // this cap (design §6.5) rather than silently truncating. Tools that can bound
@@ -173,8 +194,10 @@ pub fn base_agent_builder_with_options(
 
     // Context compression: use CompressionMiddleware from agent-works
     // (hybrid retention + stable-prefix cache + handoff summary).
+    // Skipped when `skip_compression` is true (token-budget path uses
+    // its own compactor instead).
     #[cfg(feature = "compression")]
-    {
+    if !skip_compression {
         let compactor = ContextCompactor::new(llm_client.clone(), compression_config.unwrap_or_default());
         // Store a cloned handle (shared cache) for the /compact command.
         let handle = compactor.clone_handle();
