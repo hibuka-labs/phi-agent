@@ -38,7 +38,7 @@ pub use agent_base::{
 };
 // Token-budget window strategy — a pure strategy in agent-works (agent-base
 // stays strategy-free: contract + primitives only).
-pub use agent_works::token_budget::{
+pub use agent_works::rotation_policy::{
     TokenBudgetAction, TokenBudgetConfig, TokenBudgetCore, TokenBudgetState,
     DEFAULT_SEED_MESSAGE, build_context_window_info, token_budget_base_overhead,
 };
