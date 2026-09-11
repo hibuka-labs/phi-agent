@@ -109,10 +109,10 @@ Different businesses, different needs — just the runtime? `cargo add agent-bas
 
 ```toml
 # Lightweight: file tools + MCP only
-phi-agent = { version = "0.11", default-features = false, features = ["file", "mcp"] }
+phi-agent = { version = "0.15", default-features = false, features = ["file", "mcp"] }
 
 # Full: everything
-phi-agent = { version = "0.11", features = ["full"] }
+phi-agent = { version = "0.15", features = ["full"] }
 ```
 
 → [Full feature list](guide/concepts/architecture/#pick-what-you-need)

@@ -109,10 +109,10 @@ agent-base 是运行时内核，agent-works 扩展协议与技能，phi-kernel-t
 
 ```toml
 # 轻量：只要文件工具 + MCP
-phi-agent = { version = "0.11", default-features = false, features = ["file", "mcp"] }
+phi-agent = { version = "0.15", default-features = false, features = ["file", "mcp"] }
 
 # 全量：全部功能
-phi-agent = { version = "0.11", features = ["full"] }
+phi-agent = { version = "0.15", features = ["full"] }
 ```
 
 → [完整 feature 列表](guide/concepts/architecture.md#按需引入)
