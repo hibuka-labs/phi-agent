@@ -61,6 +61,10 @@ agent-works = "0.1.4"
    agent-base = { version = "0.1.6", path = "../agent-base" }
    ```
 
+   ⚠️ **Never use path-only** (`agent-base = { path = "..." }` without version). The release script's
+   sed strips `path` but leaves `version` — if there's no version, `cargo publish` fails.
+   Always keep `version` alongside `path`.
+
 3. Remove `path` before committing.
 
 **CRITICAL: Always use local paths during development.** Every crate that depends on sibling crates MUST have `path = "../<crate>"` on its dependency line AND `[patch.crates-io]` pointing to the local path. Without this, Cargo resolves to the stale published version on crates.io, which may lack new methods (e.g., `metadatas()`) — causing confusing "method not found" errors even though the local source has the method.
