@@ -28,21 +28,21 @@ pub mod session;
 // because phi-agent is a full-stack framework that includes multi-agent, skills, MCP, etc.
 // For the bare runtime builder, use agent_base::AgentBuilder directly.
 pub use agent_base::{
-    AgentError, AgentResult, AgentRuntime, AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler,
-    ApprovalRequest, ChatMessage, CheckpointData, CheckpointStep, ConsecutiveFailureRecovery, Content,
-    DenyAllApprovalHandler, FinishReason, Language, Middleware, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx,
-    ReasoningConfig, ReasoningEffort, RetryOnError, RiskLevel, RunOutcome, RuntimeEvent, SafetyConfig, SessionId,
-    Tool, ToolContext, ToolDecision, ToolMetadata, ToolPolicy, ToolRegistry, TurnFactMiddleware,
-    TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
-    ContextCompaction, ContextWindowManager, estimate_messages_tokens, first_system_prompt,
+    AgentError, AgentResult, AgentRuntime, AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler, ApprovalRequest,
+    ChatMessage, CheckpointData, CheckpointStep, ConsecutiveFailureRecovery, Content, ContextCompaction,
+    ContextWindowManager, DenyAllApprovalHandler, FinishReason, Language, Middleware, PlanItem, PlanStepStatus,
+    PostLlmCtx, PreLlmCtx, ReasoningConfig, ReasoningEffort, RetryOnError, RiskLevel, RunOutcome, RuntimeEvent,
+    SafetyConfig, SessionId, Tool, ToolContext, ToolDecision, ToolMetadata, ToolPolicy, ToolRegistry,
+    TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx, estimate_messages_tokens,
+    first_system_prompt,
 };
 // Token-budget window strategy — a pure strategy in agent-works (agent-base
 // stays strategy-free: contract + primitives only).
-pub use agent_works::rotation_policy::{
-    TokenBudgetAction, TokenBudgetConfig, TokenBudgetCore, TokenBudgetState,
-    DEFAULT_SEED_MESSAGE, build_context_window_info, token_budget_base_overhead,
-};
 pub use agent_works::AgentBuilder;
+pub use agent_works::rotation_policy::{
+    DEFAULT_SEED_MESSAGE, TokenBudgetAction, TokenBudgetConfig, TokenBudgetCore, TokenBudgetState,
+    build_context_window_info, token_budget_base_overhead,
+};
 
 // ── phi-telemetry (metrics types and storage) ──
 #[cfg(feature = "telemetry")]
@@ -69,13 +69,13 @@ pub use agent_works::multi_agent::registry::{AgentSnapshot, RegistrySnapshot};
 // These are the remaining types a product needs to name directly, so its
 // Cargo.toml can depend on `phi-agent` alone. Only actually-consumed items
 // are re-exported — no catch-all facade.
+/// Plan / user lifecycle event types surfaced to consumers.
+pub use agent_base::UserEvent;
+/// Middleware that nudges the model when it nears the turn limit.
+pub use agent_base::engine::max_turns_nudge::{MaxTurnsNudgeConfig, MaxTurnsNudgeMiddleware};
 /// LLM provider trait family (`LlmProvider`, `Protocol`, `config::LlmConfig`):
 /// build a provider with [`create_provider`] and hand it to the runtime.
 pub use agent_base::llm_trait;
-/// Middleware that nudges the model when it nears the turn limit.
-pub use agent_base::engine::max_turns_nudge::{MaxTurnsNudgeConfig, MaxTurnsNudgeMiddleware};
-/// Plan / user lifecycle event types surfaced to consumers.
-pub use agent_base::UserEvent;
 /// Guard policies from agent-works (tool gating, reasoning-only enforcement).
 pub use agent_works::guard::{DefaultGuard, DefaultGuardConfig, ReasoningOnlyAction};
 /// LLM provider factory (resolves protocol/client from an [`llm_trait`] config).
@@ -88,8 +88,8 @@ pub use phi_kernel_tools::local_shell::LocalShellTool;
 // ── Skills (feature-gated) ──
 #[cfg(feature = "skill")]
 pub use agent_works::skill::{
-    Skill, SkillCatalogRefreshMiddleware, SkillResolver, SkillTelemetry, SkillTool,
-    MAX_CATALOG_SKILLS, prompt_skill::PromptSkill, refresh_catalog, render_catalog, strip_catalog,
+    MAX_CATALOG_SKILLS, Skill, SkillCatalogRefreshMiddleware, SkillResolver, SkillTelemetry, SkillTool,
+    prompt_skill::PromptSkill, refresh_catalog, render_catalog, strip_catalog,
 };
 
 // ── MCP (feature-gated) ──
@@ -100,9 +100,8 @@ pub use agent_works::mcp::{McpServeConfig, McpServer, McpServerConfig, McpServer
 #[cfg(feature = "compression")]
 pub use agent::CompressionMiddleware;
 pub use agent::{
-    PhiAgent, PhiAgentConfig, base_agent_builder, base_agent_builder_no_compression,
-    base_agent_builder_with_excludes, base_agent_builder_with_options,
-    clear_compression_cache, run_compact_session,
+    PhiAgent, PhiAgentConfig, base_agent_builder, base_agent_builder_no_compression, base_agent_builder_with_excludes,
+    base_agent_builder_with_options, clear_compression_cache, run_compact_session,
 };
 pub use agent_works::prompt::{
     DynamicToolsFragment, EnvironmentFragment, FragmentContext, PromptFragment, compose_fragments,
