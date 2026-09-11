@@ -180,9 +180,7 @@ mod tests {
         // The UI side receives the queued item and answers "allow always".
         let item = queue_rx.recv().await.expect("request should be queued");
         assert_eq!(item.request.title, "write_file");
-        item.decision_tx
-            .send(ApprovalDecision::AllowAlways)
-            .expect("UI should be able to answer");
+        item.decision_tx.send(ApprovalDecision::AllowAlways).expect("UI should be able to answer");
 
         let decision = handle.await.expect("handler task").expect("approve");
         assert_eq!(decision, ApprovalDecision::AllowAlways);
