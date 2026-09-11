@@ -11,6 +11,8 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 [[package]]
 name = "agent-base"
 version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ffa153327c5710871b2b0b03d864007fca7f9b90d049c9628e7dfc7c7880e18"
 dependencies = [
  "agent-types",
  "anyhow",
@@ -21,7 +23,34 @@ dependencies = [
  "futures-core",
  "futures-util",
  "llm-trait",
- "llm-unified 0.1.2",
+ "llm-unified",
+ "reqwest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "agent-base"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28c057980920248816f0106c20264d7f5eb0917efa3c66f62a10a8673cb8f6f8"
+dependencies = [
+ "agent-types",
+ "anyhow",
+ "async-openai",
+ "async-trait",
+ "chrono",
+ "eventsource-stream",
+ "futures-core",
+ "futures-util",
+ "llm-trait",
+ "llm-unified",
  "reqwest",
  "schemars",
  "serde",
@@ -36,6 +65,8 @@ dependencies = [
 [[package]]
 name = "agent-types"
 version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "815ce2f7a8352e0805ece7bb1e9633eac9fb3b256876ef87ecf71302532971a9"
 dependencies = [
  "llm-trait",
  "serde",
@@ -44,9 +75,11 @@ dependencies = [
 
 [[package]]
 name = "agent-works"
-version = "0.6.0"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46ea752261e509a5d22aa03c6e5420d3ba987367d9ad65d16869223dea2abad0"
 dependencies = [
- "agent-base",
+ "agent-base 0.6.0",
  "async-trait",
  "dyn-clone",
  "futures-core",
@@ -1464,7 +1497,9 @@ checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 
 [[package]]
 name = "llm-trait"
-version = "0.1.2"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28f415524d0efc33e8d687420d5d8a341d520cf9bb52c9d55e546aacdbe40f6d"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1479,27 +1514,9 @@ dependencies = [
 
 [[package]]
 name = "llm-unified"
-version = "0.1.2"
-dependencies = [
- "async-trait",
- "clap",
- "eventsource-stream",
- "futures-core",
- "futures-util",
- "llm-trait",
- "rand 0.10.2",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "llm-unified"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1534ed13fb71635fa3bb1728f5d06cd8eb3b251f0ccb2c7b38f0fb8654418e7"
+checksum = "855576cf2b3ae5cb718dd7a873a8e2a7fc20d16738cb1e1d9a7c6e5aa2735673"
 dependencies = [
  "async-trait",
  "clap",
@@ -1817,7 +1834,7 @@ dependencies = [
 name = "phi-agent"
 version = "0.15.0"
 dependencies = [
- "agent-base",
+ "agent-base 0.6.0",
  "agent-works",
  "anyhow",
  "async-trait",
@@ -1830,7 +1847,7 @@ dependencies = [
  "fs2",
  "futures-core",
  "futures-util",
- "llm-unified 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "llm-unified",
  "log-core",
  "phi-kernel-tools",
  "phi-telemetry",
@@ -1851,9 +1868,11 @@ dependencies = [
 
 [[package]]
 name = "phi-kernel-tools"
-version = "0.6.0"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02e63454d9d98c049a50b3c343849825dc68b2687d75d61e5e6eb5af850ea5b3"
 dependencies = [
- "agent-base",
+ "agent-base 0.6.0",
  "agent-works",
  "async-trait",
  "chrono",
@@ -1869,9 +1888,11 @@ dependencies = [
 
 [[package]]
 name = "phi-telemetry"
-version = "0.4.0"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c69ac974039cebde96aca737bded23cf1aa30ff56f9b11f5890dc647f4de3f5"
 dependencies = [
- "agent-base",
+ "agent-base 0.6.0",
  "anyhow",
  "chrono",
  "serde",
@@ -1883,8 +1904,10 @@ dependencies = [
 [[package]]
 name = "phi-tools"
 version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "861911dfdb35c0f982dcf5a8bfd53d25d09d381e94ae13b4a1729490ac78f3cc"
 dependencies = [
- "agent-base",
+ "agent-base 0.5.0",
  "anyhow",
  "async-trait",
  "base64 0.22.1",
