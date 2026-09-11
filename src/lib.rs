@@ -87,7 +87,10 @@ pub use phi_kernel_tools::local_shell::LocalShellTool;
 
 // ── Skills (feature-gated) ──
 #[cfg(feature = "skill")]
-pub use agent_works::skill::{Skill, prompt_skill::PromptSkill};
+pub use agent_works::skill::{
+    Skill, SkillCatalogRefreshMiddleware, SkillResolver, SkillTelemetry, SkillTool,
+    MAX_CATALOG_SKILLS, prompt_skill::PromptSkill, refresh_catalog, render_catalog, strip_catalog,
+};
 
 // ── MCP (feature-gated) ──
 #[cfg(feature = "mcp")]

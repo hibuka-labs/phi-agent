@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-11
+
 ### Added
 - **Facade completion** — new re-exports so products can depend on `phi-agent`
   alone (no direct agent-base / agent-works / phi-kernel-tools /
@@ -24,12 +26,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `MAX_REPORT_CHARS`); UI copy stays with the product (behind `multi-agent`).
   - `LocalShellTool` (behind `shell`).
   - `Skill` / `PromptSkill` (behind `skill`).
+  - `ToolDecision`, `CheckpointData`, `CheckpointStep` (agent-base types).
+  - `Language`, `ToolRegistry`, `RetryOnError`, `AllowAllApprovalHandler`,
+    `DenyAllApprovalHandler`, `ChatMessage` (agent-base types).
+  - `ContextCompaction`, `ContextWindowManager`, `estimate_messages_tokens`,
+    `first_system_prompt` — context-window primitives from agent-base.
+  - **Token-budget window strategy** (`rotation_policy` module from
+    agent-works): `TokenBudgetAction`, `TokenBudgetConfig`, `TokenBudgetCore`,
+    `TokenBudgetState`, `DEFAULT_SEED_MESSAGE`, `build_context_window_info`,
+    `token_budget_base_overhead`.
 
-### Added (sunk down from consumers)
 - `QueuedApprovalHandler` + `ApprovalItem` (`cli::approval`): enqueue each
   approval request to a channel the UI drains and answer via a per-request
   oneshot; serializes parallel sub-agent prompts. Sunk down from phimint's
   TUI layer — any phi-agent UI runtime needs the same pattern.
+
+- `base_agent_builder_no_compression()` — builder variant that skips
+  `CompressionMiddleware` setup (for consumers that manage context rotation
+  themselves).
+
+### Changed
+- Dependencies: agent-base 0.6.0, agent-works 0.7.0,
+  phi-kernel-tools 0.7.0, phi-tools 0.5.0, phi-telemetry 0.4.0.
 
 ## [0.14.0] - 2026-09-06
 
@@ -272,10 +290,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LLM config resolution (CLI > env > .env > default)
 - `LocalShellTool` (via phi-tools)
 
+[0.15.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/hibuka-labs/phi-agent/compare/v0.9.0...v0.11.1
-[0.9.1]: https://github.com/hibuka-labs/phi-agent/compare/v0.9.0...HEAD
-[0.9.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.3.0...HEAD
+[0.9.1]: https://github.com/hibuka-labs/phi-agent/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.3.0...v0.9.0
 [0.3.0]: https://github.com/hibuka-labs/phi-agent/compare/v0.2.9...v0.3.0
 [0.2.9]: https://github.com/hibuka-labs/phi-agent/compare/v0.2.8...v0.2.9
 [0.2.7]: https://github.com/hibuka-labs/phi-agent/compare/v0.2.6...v0.2.7
