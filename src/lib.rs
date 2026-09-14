@@ -65,6 +65,14 @@ pub use agent_works::multi_agent::fan_in::{ChildResultRoute, ChildResultRouter};
 #[cfg(feature = "multi-agent")]
 pub use agent_works::multi_agent::registry::{AgentSnapshot, RegistrySnapshot};
 
+// ── Persistent auto-memory (Phase 9b, feature-gated) ──
+/// Memory configuration for persistent auto-memory: consumer-injected policy
+/// (storage root, index filename, prompt template). Hand it to
+/// `AgentBuilder::memory_config` to register the four `memory_*` tools and
+/// append the MEMORY.md index snapshot + tool guidance to the system prompt.
+#[cfg(feature = "memory")]
+pub use agent_works::memory::MemoryConfig;
+
 // ── Framework pass-through (facade completion) ──
 // These are the remaining types a product needs to name directly, so its
 // Cargo.toml can depend on `phi-agent` alone. Only actually-consumed items
