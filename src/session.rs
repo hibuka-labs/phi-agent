@@ -1,8 +1,10 @@
 use std::fs::File;
+use std::io::{self, BufRead, Write as _};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
+use std::time::SystemTime;
 
-use agent_base::{AgentError, AgentResult};
+use agent_base::{AgentError, AgentResult, ChatMessage};
 use fs2::FileExt;
 use regex::Regex;
 
@@ -45,6 +47,11 @@ impl SessionContext {
     /// Path to the per-turn JSONL event log. `turn` is 1-indexed.
     pub fn turn_path(&self, turn: usize) -> PathBuf {
         self.session_dir.join(format!("turn_{:03}.jsonl", turn))
+    }
+
+    /// Path to the `messages.jsonl` window snapshot (one `ChatMessage` per line).
+    pub fn messages_jsonl_path(&self) -> PathBuf {
+        self.session_dir.join("messages.jsonl")
     }
 
     /// Highest turn number already logged for this session (0 if none).
@@ -202,10 +209,42 @@ fn update_session_meta(session_dir: &Path, session_id: &str) -> AgentResult<()> 
     Ok(())
 }
 
+/// Read the LLM-generated title from `session_meta.json`.
+///
+/// Returns `None` if the file is missing, malformed, or has no `title` field.
+pub fn read_session_title(session_dir: &Path) -> Option<String> {
+    let meta_path = session_dir.join("session_meta.json");
+    let content = std::fs::read_to_string(&meta_path).ok()?;
+    let meta: serde_json::Value = serde_json::from_str(&content).ok()?;
+    meta["title"].as_str().filter(|s| !s.is_empty()).map(String::from)
+}
+
+/// Write a session title into `session_meta.json`.
+///
+/// `generated = true` means the title was produced by LLM at the 10th-user-message
+/// threshold and should NOT be regenerated on subsequent exits.
+/// `generated = false` means it's a tentative title (e.g., produced on early exit)
+/// that will be regenerated if the session continues to 10 user messages.
+pub fn write_session_title(session_dir: &Path, title: &str, generated: bool) -> io::Result<()> {
+    let meta_path = session_dir.join("session_meta.json");
+    let mut meta = if meta_path.exists() {
+        let content = std::fs::read_to_string(&meta_path)?;
+        serde_json::from_str::<serde_json::Value>(&content).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    meta["title"] = serde_json::json!(title);
+    meta["title_generated"] = serde_json::json!(generated);
+
+    std::fs::write(&meta_path, serde_json::to_string_pretty(&meta)?)?;
+    Ok(())
+}
+
 /// Clean up expired sessions.
 ///
 /// Sessions inactive for more than `max_age_days` are removed from disk.
-/// Active (locked) sessions are skipped.
+/// Active (locked) are skipped.
 pub fn cleanup_expired_sessions(base_dir: &Path, max_age_days: i64) -> AgentResult<u32> {
     let sessions_dir = base_dir.join("sessions");
     if !sessions_dir.exists() {
@@ -258,6 +297,275 @@ pub fn cleanup_expired_sessions(base_dir: &Path, max_age_days: i64) -> AgentResu
     }
 
     Ok(cleaned)
+}
+
+// ── session listing (for resume picker / session browser) ──
+
+/// A session entry returned by [`list_sessions`].
+#[derive(Debug)]
+pub struct SessionInfo {
+    /// Session ID (directory name, e.g. `"20260914_50cf809d"`).
+    pub session_id: String,
+    /// Display title (LLM-generated, first User message, or empty).
+    pub title: String,
+    /// Last activity time (`messages.jsonl` mtime).
+    pub last_active_at: SystemTime,
+    /// Path to the session directory.
+    pub session_dir: PathBuf,
+}
+
+/// List resumable sessions under `base_dir/sessions/`.
+///
+/// Scans session directories, filters out locked / empty / current sessions,
+/// and returns entries sorted by `messages.jsonl` mtime descending (newest first).
+/// Any framework consumer can use this to present a session history list.
+pub fn list_sessions(base_dir: &Path, current_session_id: Option<&str>) -> Vec<SessionInfo> {
+    let sessions_dir = base_dir.join("sessions");
+    if !sessions_dir.exists() {
+        return Vec::new();
+    }
+
+    let mut entries = Vec::new();
+
+    for dir_entry in match std::fs::read_dir(&sessions_dir) {
+        Ok(rd) => rd,
+        Err(_) => return Vec::new(),
+    }
+    .flatten()
+    {
+        let path = dir_entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        let session_id = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        // Skip the current session.
+        if Some(session_id.as_str()) == current_session_id {
+            continue;
+        }
+
+        // Skip sessions that are locked by another running process.
+        let lock_path = path.join("session.lock");
+        if let Ok(file) = File::open(&lock_path) {
+            if file.try_lock_shared().is_err() {
+                continue;
+            }
+            drop(file);
+        }
+
+        // messages.jsonl must exist and contain at least one message.
+        let messages_path = path.join("messages.jsonl");
+        if !messages_path.exists() {
+            continue;
+        }
+
+        let title = extract_session_title(&path);
+        if title.is_empty() {
+            continue;
+        }
+
+        let mtime = std::fs::metadata(&messages_path)
+            .and_then(|m| m.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+
+        entries.push(SessionInfo {
+            session_id,
+            title,
+            last_active_at: mtime,
+            session_dir: path,
+        });
+    }
+
+    entries.sort_by_key(|e| std::cmp::Reverse(e.last_active_at));
+    entries
+}
+
+/// Extract a display title for a session.
+///
+/// Priority: LLM-generated title → first User message → turn_001 user_input → empty.
+fn extract_session_title(session_dir: &Path) -> String {
+    // 1. LLM-generated title from session_meta.json.
+    if let Some(title) = read_session_title(session_dir) {
+        return title;
+    }
+
+    // 2. First User message from messages.jsonl.
+    let messages_path = session_dir.join("messages.jsonl");
+    if let Ok(file) = File::open(&messages_path) {
+        let reader = io::BufReader::new(file);
+        for line in reader.lines().map_while(Result::ok) {
+            if line.trim().is_empty() {
+                continue;
+            }
+            if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line)
+                && let Some(content) = msg
+                    .get("User")
+                    .and_then(|u| u.get("content"))
+                    .and_then(|c| c.as_str())
+            {
+                return truncate_display(content, 60);
+            }
+        }
+    }
+
+    // 3. turn_001.jsonl user_input field.
+    let turn_path = session_dir.join("turn_001.jsonl");
+    if let Ok(file) = File::open(&turn_path) {
+        let reader = io::BufReader::new(file);
+        for line in reader.lines().map_while(Result::ok) {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&line)
+                && let Some(input) = val.get("user_input").and_then(|u| u.as_str())
+            {
+                return truncate_display(input, 60);
+            }
+        }
+    }
+
+    String::new()
+}
+
+/// Truncate display text to `max` chars, appending "..." if truncated.
+fn truncate_display(s: &str, max: usize) -> String {
+    let clean: String = s.split_whitespace().collect::<Vec<&str>>().join(" ");
+    if clean.chars().count() <= max {
+        clean
+    } else {
+        let truncated: String = clean.chars().take(max).collect();
+        format!("{}...", truncated)
+    }
+}
+
+// ── messages.jsonl persistence (resume support) ──
+
+/// Path to the `messages.jsonl` file inside a session directory.
+fn messages_jsonl_path(session_dir: &Path) -> PathBuf {
+    session_dir.join("messages.jsonl")
+}
+
+/// Strip stale reasoning metadata from an Assistant message so that a resumed
+/// conversation never replays stale `reasoning_content` / `thinking_signature`.
+fn strip_stale_fields(msg: &mut ChatMessage) {
+    if let ChatMessage::Assistant {
+        reasoning_content,
+        thinking_signature,
+        ..
+    } = msg
+    {
+        *reasoning_content = None;
+        *thinking_signature = None;
+    }
+}
+
+/// Persist the current window's full `ChatMessage` list as a JSONL snapshot.
+///
+/// Writes atomically (tmp → rename) so a crash mid-write never corrupts the
+/// existing file.  System and ephemeral messages are skipped — the resumed
+/// session will use a fresh system prompt.
+pub fn persist_window_messages(session_dir: &Path, messages: &[ChatMessage]) -> io::Result<()> {
+    let path = messages_jsonl_path(session_dir);
+    let tmp = path.with_extension("jsonl.tmp");
+
+    let mut file = File::create(&tmp)?;
+    for mut msg in messages.iter().cloned() {
+        match &msg {
+            ChatMessage::System { .. } => continue,
+            ChatMessage::User { ephemeral: true, .. } => continue,
+            _ => {}
+        }
+        strip_stale_fields(&mut msg);
+        serde_json::to_writer(&mut file, &msg)?;
+        file.write_all(b"\n")?;
+    }
+    file.flush()?;
+    drop(file);
+
+    std::fs::rename(&tmp, &path)?;
+    Ok(())
+}
+
+/// Load a previously-persisted `messages.jsonl` and sanitize for resume.
+///
+/// Sanitization:
+/// - Skip empty lines and malformed JSON (logged + skipped, not fatal).
+/// - Drop any `System` messages (the resumed session uses a fresh system prompt).
+/// - Strip `reasoning_content` / `thinking_signature` from Assistant messages.
+/// - Patch dangling tool calls at the tail: if the last Assistant message has
+///   `tool_calls` that were never answered, synthesize a `Tool` response with
+///   content `"interrupted"` so that `validate_message_sequence` passes.
+pub fn load_session_messages(session_dir: &Path) -> io::Result<Vec<ChatMessage>> {
+    let path = messages_jsonl_path(session_dir);
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let file = File::open(&path)?;
+    let reader = io::BufReader::new(file);
+    let mut messages = Vec::new();
+
+    for line_result in reader.lines() {
+        let line = line_result?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let mut msg: ChatMessage = match serde_json::from_str(&line) {
+            Ok(m) => m,
+            Err(e) => {
+                tracing::warn!(error = %e, "skipping malformed messages.jsonl line");
+                continue;
+            }
+        };
+        // Drop System messages — resume prepends a fresh system prompt.
+        if matches!(msg, ChatMessage::System { .. }) {
+            continue;
+        }
+        strip_stale_fields(&mut msg);
+        messages.push(msg);
+    }
+
+    // Patch dangling tool calls at the tail.  A cancelled turn may leave an
+    // Assistant with `tool_calls` but no matching Tool response — synthesize
+    // an "interrupted" Tool message so `validate_message_sequence` passes.
+    let mut pending: Vec<String> = Vec::new();
+    for msg in &messages {
+        match msg {
+            ChatMessage::Assistant {
+                tool_calls: Some(tcs), ..
+            } => {
+                pending = tcs.iter().map(|t| t.id.clone()).collect();
+            }
+            ChatMessage::Tool { tool_call_id, .. } => {
+                pending.retain(|id| id != tool_call_id);
+            }
+            _ => {}
+        }
+    }
+    for id in pending {
+        tracing::info!(tool_call_id = %id, "patching dangling tool_call with interrupted response");
+        messages.push(ChatMessage::Tool {
+            tool_call_id: id,
+            name: None,
+            content: "interrupted".to_string(),
+        });
+    }
+
+    Ok(messages)
+}
+
+/// Delete the `messages.jsonl` file if it exists.
+///
+/// Called after a context-rotation window is archived — the archived window
+/// already contains the messages, so keeping `messages.jsonl` would be
+/// redundant and could cause double-injection on resume.
+pub fn clear_messages_jsonl(session_dir: &Path) -> io::Result<()> {
+    let path = messages_jsonl_path(session_dir);
+    if path.exists() {
+        std::fs::remove_file(&path)?;
+    }
+    Ok(())
 }
 
 // ── Session snapshots (Phase 6.3) ──
@@ -703,6 +1011,325 @@ mod tests {
         let ctx = resolve_session(Some("base-test"), tmp.path()).unwrap();
         assert_eq!(ctx.base_dir, tmp.path());
         assert!(ctx.session_dir.starts_with(&ctx.base_dir));
+    }
+
+    #[test]
+    fn test_session_context_messages_jsonl_path() {
+        let tmp = TempDir::new().unwrap();
+        let ctx = resolve_session(Some("mj-path"), tmp.path()).unwrap();
+        assert_eq!(ctx.messages_jsonl_path(), ctx.session_dir.join("messages.jsonl"));
+    }
+
+    // ── Phase 1: messages.jsonl persistence tests ──
+
+    /// Build a minimal ChatMessage list for testing (no System messages).
+    fn sample_messages() -> Vec<ChatMessage> {
+        vec![
+            ChatMessage::User {
+                content: "hello".to_string(),
+                images: vec![],
+                ephemeral: false,
+            },
+            ChatMessage::Assistant {
+                content: Some("hi there".to_string()),
+                reasoning_content: Some("thinking...".to_string()),
+                thinking_signature: Some("sig123".to_string()),
+                tool_calls: None,
+            },
+        ]
+    }
+
+    #[test]
+    fn test_persist_and_load_roundtrip() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+
+        let msgs = sample_messages();
+        persist_window_messages(dir, &msgs).unwrap();
+
+        let loaded = load_session_messages(dir).unwrap();
+        assert_eq!(loaded.len(), 2);
+
+        // User message round-trips.
+        assert!(matches!(&loaded[0], ChatMessage::User { content, .. } if content == "hello"));
+
+        // Assistant: reasoning_content and thinking_signature are stripped.
+        match &loaded[1] {
+            ChatMessage::Assistant { content, reasoning_content, thinking_signature, tool_calls } => {
+                assert_eq!(content.as_deref(), Some("hi there"));
+                assert!(reasoning_content.is_none(), "reasoning_content should be stripped");
+                assert!(thinking_signature.is_none(), "thinking_signature should be stripped");
+                assert!(tool_calls.is_none());
+            }
+            other => panic!("expected Assistant, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_persist_skips_system_and_ephemeral() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+
+        let msgs = vec![
+            ChatMessage::System {
+                content: "system prompt".to_string(),
+                ephemeral: false,
+            },
+            ChatMessage::User {
+                content: "ephemeral ask".to_string(),
+                images: vec![],
+                ephemeral: true,
+            },
+            ChatMessage::User {
+                content: "real question".to_string(),
+                images: vec![],
+                ephemeral: false,
+            },
+        ];
+        persist_window_messages(dir, &msgs).unwrap();
+
+        let loaded = load_session_messages(dir).unwrap();
+        assert_eq!(loaded.len(), 1, "System + ephemeral User should be filtered");
+        assert!(matches!(&loaded[0], ChatMessage::User { content, .. } if content == "real question"));
+    }
+
+    #[test]
+    fn test_load_skips_malformed_lines() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+        let path = dir.join("messages.jsonl");
+
+        // Mix valid and invalid lines.
+        let mut file = File::create(&path).unwrap();
+        writeln!(file, r#"{{"User":{{"content":"good","images":[]}}}}"#).unwrap();
+        writeln!(file, "NOT VALID JSON").unwrap();
+        writeln!(file, "").unwrap(); // empty line
+        writeln!(file, r#"{{"User":{{"content":"also good","images":[]}}}}"#).unwrap();
+
+        let loaded = load_session_messages(dir).unwrap();
+        assert_eq!(loaded.len(), 2, "malformed + empty lines should be skipped");
+    }
+
+    #[test]
+    fn test_load_patches_dangling_tool_calls() {
+        use agent_base::llm_trait::ToolCallMessage;
+
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+
+        // Assistant with two tool_calls, only one answered.
+        let msgs = vec![
+            ChatMessage::User {
+                content: "run tools".to_string(),
+                images: vec![],
+                ephemeral: false,
+            },
+            ChatMessage::Assistant {
+                content: None,
+                reasoning_content: None,
+                thinking_signature: None,
+                tool_calls: Some(vec![
+                    ToolCallMessage {
+                        id: "tc_answered".to_string(),
+                        name: "read_file".to_string(),
+                        arguments: "{}".to_string(),
+                    },
+                    ToolCallMessage {
+                        id: "tc_dangling".to_string(),
+                        name: "write_file".to_string(),
+                        arguments: "{}".to_string(),
+                    },
+                ]),
+            },
+            ChatMessage::Tool {
+                tool_call_id: "tc_answered".to_string(),
+                name: Some("read_file".to_string()),
+                content: "file content".to_string(),
+            },
+            // tc_dangling has no response — simulates a cancelled turn.
+        ];
+        persist_window_messages(dir, &msgs).unwrap();
+
+        let loaded = load_session_messages(dir).unwrap();
+        // Should have: User, Assistant, Tool(answered), Tool(interrupted patch).
+        assert_eq!(loaded.len(), 4, "expected 4 messages including patched Tool");
+
+        match &loaded[3] {
+            ChatMessage::Tool { tool_call_id, content, .. } => {
+                assert_eq!(tool_call_id, "tc_dangling");
+                assert_eq!(content, "interrupted");
+            }
+            other => panic!("expected patched Tool message, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_persist_atomic_crash_preserves_old_file() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+
+        // Write an initial valid file.
+        let original = vec![ChatMessage::User {
+            content: "original".to_string(),
+            images: vec![],
+            ephemeral: false,
+        }];
+        persist_window_messages(dir, &original).unwrap();
+
+        // Simulate a partial write by writing a truncated tmp and NOT renaming.
+        let path = messages_jsonl_path(dir);
+        let tmp_path = path.with_extension("jsonl.tmp");
+        std::fs::write(&tmp_path, "TRUNCATED").unwrap();
+
+        // The real file should still be intact.
+        let loaded = load_session_messages(dir).unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert!(matches!(&loaded[0], ChatMessage::User { content, .. } if content == "original"));
+    }
+
+    #[test]
+    fn test_clear_messages_jsonl() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+
+        persist_window_messages(dir, &sample_messages()).unwrap();
+        assert!(messages_jsonl_path(dir).exists());
+
+        clear_messages_jsonl(dir).unwrap();
+        assert!(!messages_jsonl_path(dir).exists());
+    }
+
+    #[test]
+    fn test_clear_messages_jsonl_noop_when_missing() {
+        let tmp = TempDir::new().unwrap();
+        // Should not error when the file doesn't exist.
+        clear_messages_jsonl(tmp.path()).unwrap();
+    }
+
+    #[test]
+    fn test_load_returns_empty_when_no_file() {
+        let tmp = TempDir::new().unwrap();
+        let loaded = load_session_messages(tmp.path()).unwrap();
+        assert!(loaded.is_empty());
+    }
+
+    #[test]
+    fn test_persist_empty_messages() {
+        let tmp = TempDir::new().unwrap();
+        persist_window_messages(tmp.path(), &[]).unwrap();
+
+        let loaded = load_session_messages(tmp.path()).unwrap();
+        assert!(loaded.is_empty());
+    }
+
+    #[test]
+    fn test_load_strips_reasoning_on_all_assistants() {
+        use agent_base::llm_trait::ToolCallMessage;
+
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+
+        let msgs = vec![
+            ChatMessage::Assistant {
+                content: Some("first".to_string()),
+                reasoning_content: Some("r1".to_string()),
+                thinking_signature: Some("s1".to_string()),
+                tool_calls: Some(vec![ToolCallMessage {
+                    id: "tc1".to_string(),
+                    name: "tool".to_string(),
+                    arguments: "{}".to_string(),
+                }]),
+            },
+            ChatMessage::Tool {
+                tool_call_id: "tc1".to_string(),
+                name: Some("tool".to_string()),
+                content: "ok".to_string(),
+            },
+            ChatMessage::Assistant {
+                content: Some("second".to_string()),
+                reasoning_content: Some("r2".to_string()),
+                thinking_signature: Some("s2".to_string()),
+                tool_calls: None,
+            },
+        ];
+        persist_window_messages(dir, &msgs).unwrap();
+
+        let loaded = load_session_messages(dir).unwrap();
+        for msg in &loaded {
+            if let ChatMessage::Assistant { reasoning_content, thinking_signature, .. } = msg {
+                assert!(reasoning_content.is_none(), "reasoning_content should be stripped");
+                assert!(thinking_signature.is_none(), "thinking_signature should be stripped");
+            }
+        }
+    }
+
+    // ── extract_session_title tests ──
+
+    #[test]
+    fn extract_title_from_messages_jsonl() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("s1");
+        std::fs::create_dir_all(&dir).unwrap();
+        let msg = serde_json::json!({"User":{"content":"帮我写个函数","images":[]}});
+        std::fs::write(dir.join("messages.jsonl"), format!("{}\n", msg)).unwrap();
+        assert_eq!(extract_session_title(&dir), "帮我写个函数");
+    }
+
+    #[test]
+    fn extract_title_truncates_long_content() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("s1");
+        std::fs::create_dir_all(&dir).unwrap();
+        let long_msg = "a".repeat(100);
+        let msg = serde_json::json!({"User":{"content":long_msg,"images":[]}});
+        std::fs::write(dir.join("messages.jsonl"), format!("{}\n", msg)).unwrap();
+        let title = extract_session_title(&dir);
+        assert!(title.ends_with("..."), "expected truncation, got: {}", title);
+    }
+
+    #[test]
+    fn extract_title_fallback_to_turn_log() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("fallback");
+        std::fs::create_dir_all(&dir).unwrap();
+        let sys = serde_json::json!({"System":{"content":"sys"}});
+        std::fs::write(dir.join("messages.jsonl"), format!("{}\n", sys)).unwrap();
+        let turn = serde_json::json!({"turn":1,"timestamp":"2026-09-10T10:00:00Z","user_input":"from turn log"});
+        std::fs::write(dir.join("turn_001.jsonl"), format!("{}\n", turn)).unwrap();
+        assert_eq!(extract_session_title(&dir), "from turn log");
+    }
+
+    #[test]
+    fn extract_title_empty_when_nothing() {
+        let tmp = TempDir::new().unwrap();
+        assert_eq!(extract_session_title(tmp.path()), "");
+    }
+
+    // ── list_sessions tests ──
+
+    #[test]
+    fn list_sessions_finds_resumable() {
+        let tmp = TempDir::new().unwrap();
+        for id in &["s1", "s2"] {
+            let dir = tmp.path().join("sessions").join(id);
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("session_meta.json"), "{}").unwrap();
+            let msg = serde_json::json!({"User":{"content":"hello","images":[]}});
+            std::fs::write(dir.join("messages.jsonl"), format!("{}\n", msg)).unwrap();
+        }
+        let entries = list_sessions(tmp.path(), None);
+        assert_eq!(entries.len(), 2);
+    }
+
+    #[test]
+    fn list_sessions_skips_current() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("sessions").join("cur");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("session_meta.json"), "{}").unwrap();
+        let msg = serde_json::json!({"User":{"content":"hello","images":[]}});
+        std::fs::write(dir.join("messages.jsonl"), format!("{}\n", msg)).unwrap();
+        assert_eq!(list_sessions(tmp.path(), Some("cur")).len(), 0);
     }
 }
 

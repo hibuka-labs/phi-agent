@@ -1,6 +1,7 @@
+use std::path::Path;
 use std::sync::Arc;
 
-use agent_base::{AgentResult, AgentRuntime, ReasoningEffort, RunOutcome, RuntimeEvent, SafetyConfig, SessionId};
+use agent_base::{AgentError, AgentResult, AgentRuntime, ChatMessage, ReasoningEffort, RunOutcome, RuntimeEvent, SafetyConfig, SessionId};
 
 use agent_works::AgentBuilder;
 
@@ -169,6 +170,42 @@ impl PhiAgent {
         self.runtime.run_turn(session_id, query, on_event).await
     }
 
+    /// Like `run_turn`, but the query is pushed as an **ephemeral** user
+    /// message: the LLM sees it for this turn only, then turn-end cleanup
+    /// removes it from memory and persistence. Used for skill-body
+    /// injection — history keeps only the original command.
+    pub async fn run_turn_ephemeral_input<F>(
+        &self,
+        session_id: SessionId,
+        query: &str,
+        on_event: F,
+    ) -> AgentResult<RunOutcome>
+    where
+        F: FnMut(RuntimeEvent) -> AgentResult<()> + Send + 'static,
+    {
+        self.runtime
+            .run_turn_ephemeral_input(session_id, query, on_event)
+            .await
+    }
+
+    /// The pristine build-time system prompt (async — safe inside a runtime).
+    /// Hosts that bake session state into the prompt (e.g. skill activation)
+    /// capture this once and append to it, never recompose.
+    pub async fn system_prompt(&self) -> Option<String> {
+        self.runtime.system_prompt().await
+    }
+
+    /// Replace the session's system prompt (the first non-ephemeral System
+    /// message). phimint uses this to re-bake the prompt when a session-scope
+    /// skill is activated — the body joins an "Active Skills" section.
+    pub async fn set_system_prompt(
+        &self,
+        session_id: &SessionId,
+        prompt: impl Into<String>,
+    ) -> AgentResult<()> {
+        self.runtime.set_system_prompt(session_id, prompt).await
+    }
+
     /// Cancel the currently executing turn.
     ///
     /// # Example
@@ -284,6 +321,56 @@ impl PhiAgent {
         let tools = self.runtime.tools_mut();
         let registry = tools.read().await;
         registry.metadatas()
+    }
+
+    /// Create a new session and inject historical messages for resume.
+    ///
+    /// Creates a fresh session (which receives a fresh System prompt), then
+    /// replaces the chat messages with `[fresh_system] + messages`.  The
+    /// caller must ensure `messages` contains **no** `System` messages — use
+    /// [`load_session_messages`] which filters them out automatically.
+    ///
+    /// # Errors
+    /// Returns an error if `messages` is empty / System-only, or if the
+    /// combined sequence fails `validate_message_sequence` (e.g. dangling
+    /// tool calls).  Again, [`load_session_messages`] sanitizes all of this.
+    pub async fn resume_session(&self, messages: Vec<ChatMessage>) -> AgentResult<SessionId> {
+        let session_id = self.create_session().await;
+        self.runtime()
+            .with_session_mut(&session_id, |s| {
+                // Keep the fresh system prompt that create_session wrote.
+                let fresh_system = s.chat_messages().first().cloned();
+                let mut merged = Vec::new();
+                if let Some(sys) = fresh_system {
+                    merged.push(sys);
+                }
+                merged.extend(messages);
+                s.set_chat_messages(merged).map_err(AgentError::config_error)
+            })
+            .await??;
+        Ok(session_id)
+    }
+
+    /// One-step session switch: resolve → load messages → resume.
+    ///
+    /// Given a session directory (from the picker), resolves the session context,
+    /// loads historical messages, and creates a new agent session with those
+    /// messages. Returns the new session ID, the loaded messages (for transcript
+    /// replay), and the resolved context.
+    pub async fn switch_to_session(
+        &self,
+        picked_session_dir: &Path,
+        base_dir: &Path,
+    ) -> AgentResult<(SessionId, Vec<ChatMessage>, crate::session::SessionContext)> {
+        let picked_id = picked_session_dir
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let ctx = crate::session::resolve_session(Some(&picked_id), base_dir)?;
+        let messages = crate::session::load_session_messages(&ctx.session_dir)
+            .map_err(|e| AgentError::config_error(e.to_string()))?;
+        let new_id = self.resume_session(messages.clone()).await?;
+        Ok((new_id, messages, ctx))
     }
 }
 
@@ -629,5 +716,99 @@ mod tests {
         let agent = build_agent();
         // No hub initialized → detach is a no-op.
         agent.detach_mcp("never-attached").await;
+    }
+
+    // ── Phase 2: resume_session tests ──
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_resume_session_preserves_fresh_system_prompt() {
+        let agent = build_agent();
+
+        // Simulate a conversation: User + Assistant.
+        let historical = vec![
+            ChatMessage::User {
+                content: "what is 2+2?".to_string(),
+                images: vec![],
+                ephemeral: false,
+            },
+            ChatMessage::Assistant {
+                content: Some("4".to_string()),
+                reasoning_content: None,
+                thinking_signature: None,
+                tool_calls: None,
+            },
+        ];
+
+        let session_id = agent.resume_session(historical).await.unwrap();
+
+        // The session should contain: [System(fresh), User, Assistant].
+        let msgs = agent.runtime().get_messages(&session_id).await.unwrap();
+        assert!(msgs.len() >= 3, "expected at least System + User + Assistant, got {}", msgs.len());
+
+        // First message must be the fresh System prompt.
+        assert!(
+            matches!(&msgs[0], ChatMessage::System { content, .. } if !content.is_empty()),
+            "first message must be a non-empty System prompt, got {:?}",
+            msgs[0]
+        );
+
+        // The historical messages follow.
+        assert!(matches!(&msgs[1], ChatMessage::User { content, .. } if content == "what is 2+2?"));
+        assert!(matches!(&msgs[2], ChatMessage::Assistant { content, .. } if content.as_deref() == Some("4")));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_resume_session_rejects_empty_messages() {
+        let agent = build_agent();
+
+        // Empty messages → validate_message_sequence fails (no sendable message).
+        let err = agent.resume_session(vec![]).await.unwrap_err();
+        assert!(
+            matches!(err, agent_base::AgentError::ConfigError(_)),
+            "expected ConfigError for empty messages, got {:?}",
+            err
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_resume_session_roundtrip_with_persist() {
+        use crate::session::{load_session_messages, persist_window_messages};
+
+        let agent = build_agent();
+
+        // Persist a conversation to disk, then load and resume.
+        let tmp = tempfile::TempDir::new().unwrap();
+        let messages = vec![
+            ChatMessage::User {
+                content: "hello".to_string(),
+                images: vec![],
+                ephemeral: false,
+            },
+            ChatMessage::Assistant {
+                content: Some("hi!".to_string()),
+                reasoning_content: Some("thinking...".to_string()),
+                thinking_signature: Some("sig".to_string()),
+                tool_calls: None,
+            },
+        ];
+        persist_window_messages(tmp.path(), &messages).unwrap();
+
+        let loaded = load_session_messages(tmp.path()).unwrap();
+        let session_id = agent.resume_session(loaded).await.unwrap();
+
+        let msgs = agent.runtime().get_messages(&session_id).await.unwrap();
+        // System + User + Assistant
+        assert!(msgs.len() >= 3);
+
+        // System is fresh (not the persisted one — there was none).
+        assert!(matches!(&msgs[0], ChatMessage::System { .. }));
+
+        // Assistant reasoning_content was stripped during load.
+        if let ChatMessage::Assistant { reasoning_content, thinking_signature, .. } = &msgs[2] {
+            assert!(reasoning_content.is_none());
+            assert!(thinking_signature.is_none());
+        } else {
+            panic!("expected Assistant at index 2");
+        }
     }
 }
