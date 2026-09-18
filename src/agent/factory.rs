@@ -1,7 +1,10 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use agent_base::{AgentError, AgentResult, AgentRuntime, ChatMessage, ReasoningEffort, RunOutcome, RuntimeEvent, SafetyConfig, SessionId};
+use agent_base::{
+    AgentError, AgentResult, AgentRuntime, ChatMessage, ReasoningEffort, RunOutcome, RuntimeEvent, SafetyConfig,
+    SessionId,
+};
 
 use agent_works::AgentBuilder;
 
@@ -183,9 +186,7 @@ impl PhiAgent {
     where
         F: FnMut(RuntimeEvent) -> AgentResult<()> + Send + 'static,
     {
-        self.runtime
-            .run_turn_ephemeral_input(session_id, query, on_event)
-            .await
+        self.runtime.run_turn_ephemeral_input(session_id, query, on_event).await
     }
 
     /// The pristine build-time system prompt (async — safe inside a runtime).
@@ -198,11 +199,7 @@ impl PhiAgent {
     /// Replace the session's system prompt (the first non-ephemeral System
     /// message). phimint uses this to re-bake the prompt when a session-scope
     /// skill is activated — the body joins an "Active Skills" section.
-    pub async fn set_system_prompt(
-        &self,
-        session_id: &SessionId,
-        prompt: impl Into<String>,
-    ) -> AgentResult<()> {
+    pub async fn set_system_prompt(&self, session_id: &SessionId, prompt: impl Into<String>) -> AgentResult<()> {
         self.runtime.set_system_prompt(session_id, prompt).await
     }
 
@@ -362,10 +359,7 @@ impl PhiAgent {
         picked_session_dir: &Path,
         base_dir: &Path,
     ) -> AgentResult<(SessionId, Vec<ChatMessage>, crate::session::SessionContext)> {
-        let picked_id = picked_session_dir
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
+        let picked_id = picked_session_dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
         let ctx = crate::session::resolve_session(Some(&picked_id), base_dir)?;
         let messages = crate::session::load_session_messages(&ctx.session_dir)
             .map_err(|e| AgentError::config_error(e.to_string()))?;
@@ -726,11 +720,7 @@ mod tests {
 
         // Simulate a conversation: User + Assistant.
         let historical = vec![
-            ChatMessage::User {
-                content: "what is 2+2?".to_string(),
-                images: vec![],
-                ephemeral: false,
-            },
+            ChatMessage::User { content: "what is 2+2?".to_string(), images: vec![], ephemeral: false },
             ChatMessage::Assistant {
                 content: Some("4".to_string()),
                 reasoning_content: None,
@@ -779,11 +769,7 @@ mod tests {
         // Persist a conversation to disk, then load and resume.
         let tmp = tempfile::TempDir::new().unwrap();
         let messages = vec![
-            ChatMessage::User {
-                content: "hello".to_string(),
-                images: vec![],
-                ephemeral: false,
-            },
+            ChatMessage::User { content: "hello".to_string(), images: vec![], ephemeral: false },
             ChatMessage::Assistant {
                 content: Some("hi!".to_string()),
                 reasoning_content: Some("thinking...".to_string()),

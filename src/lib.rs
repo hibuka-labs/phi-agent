@@ -98,10 +98,9 @@ pub use phi_kernel_tools::local_shell::LocalShellTool;
 // ── Skills (feature-gated) ──
 #[cfg(feature = "skill")]
 pub use agent_works::skill::{
-    MAX_CATALOG_SKILLS, Skill, SkillCatalogRefreshMiddleware, SkillResolver, SkillTelemetry,
-    SkillTool,
-    catalog::demote_h2_headings, prompt_skill::PromptSkill, prompt_skill::SkillScope,
-    refresh_catalog, render_catalog, strip_catalog,
+    MAX_CATALOG_SKILLS, Skill, SkillCatalogRefreshMiddleware, SkillResolver, SkillTelemetry, SkillTool,
+    catalog::demote_h2_headings, prompt_skill::PromptSkill, prompt_skill::SkillScope, refresh_catalog, render_catalog,
+    strip_catalog,
 };
 
 // ── MCP (feature-gated) ──
@@ -127,9 +126,8 @@ pub use render::{
 };
 pub use session::{
     SessionContext, SessionInfo, SnapshotInfo, cleanup_expired_sessions, clear_messages_jsonl, create_snapshot,
-    delete_snapshot, list_sessions, list_snapshots, load_session_messages, persist_window_messages,
-    read_session_title, resolve_session, restore_snapshot, validate_session_id, validate_snapshot_name,
-    write_session_title,
+    delete_snapshot, list_sessions, list_snapshots, load_session_messages, persist_window_messages, read_session_title,
+    resolve_session, restore_snapshot, validate_session_id, validate_snapshot_name, write_session_title,
 };
 
 /// Format a number with K/M suffixes for display.

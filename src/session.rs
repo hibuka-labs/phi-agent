@@ -338,10 +338,7 @@ pub fn list_sessions(base_dir: &Path, current_session_id: Option<&str>) -> Vec<S
             continue;
         }
 
-        let session_id = path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
+        let session_id = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
 
         // Skip the current session.
         if Some(session_id.as_str()) == current_session_id {
@@ -368,16 +365,9 @@ pub fn list_sessions(base_dir: &Path, current_session_id: Option<&str>) -> Vec<S
             continue;
         }
 
-        let mtime = std::fs::metadata(&messages_path)
-            .and_then(|m| m.modified())
-            .unwrap_or(SystemTime::UNIX_EPOCH);
+        let mtime = std::fs::metadata(&messages_path).and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH);
 
-        entries.push(SessionInfo {
-            session_id,
-            title,
-            last_active_at: mtime,
-            session_dir: path,
-        });
+        entries.push(SessionInfo { session_id, title, last_active_at: mtime, session_dir: path });
     }
 
     entries.sort_by_key(|e| std::cmp::Reverse(e.last_active_at));
@@ -402,10 +392,7 @@ fn extract_session_title(session_dir: &Path) -> String {
                 continue;
             }
             if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line)
-                && let Some(content) = msg
-                    .get("User")
-                    .and_then(|u| u.get("content"))
-                    .and_then(|c| c.as_str())
+                && let Some(content) = msg.get("User").and_then(|u| u.get("content")).and_then(|c| c.as_str())
             {
                 return truncate_display(content, 60);
             }
@@ -449,12 +436,7 @@ fn messages_jsonl_path(session_dir: &Path) -> PathBuf {
 /// Strip stale reasoning metadata from an Assistant message so that a resumed
 /// conversation never replays stale `reasoning_content` / `thinking_signature`.
 fn strip_stale_fields(msg: &mut ChatMessage) {
-    if let ChatMessage::Assistant {
-        reasoning_content,
-        thinking_signature,
-        ..
-    } = msg
-    {
+    if let ChatMessage::Assistant { reasoning_content, thinking_signature, .. } = msg {
         *reasoning_content = None;
         *thinking_signature = None;
     }
@@ -474,7 +456,7 @@ pub fn persist_window_messages(session_dir: &Path, messages: &[ChatMessage]) -> 
         match &msg {
             ChatMessage::System { .. } => continue,
             ChatMessage::User { ephemeral: true, .. } => continue,
-            _ => {}
+            _ => {},
         }
         strip_stale_fields(&mut msg);
         serde_json::to_writer(&mut file, &msg)?;
@@ -516,7 +498,7 @@ pub fn load_session_messages(session_dir: &Path) -> io::Result<Vec<ChatMessage>>
             Err(e) => {
                 tracing::warn!(error = %e, "skipping malformed messages.jsonl line");
                 continue;
-            }
+            },
         };
         // Drop System messages — resume prepends a fresh system prompt.
         if matches!(msg, ChatMessage::System { .. }) {
@@ -532,24 +514,18 @@ pub fn load_session_messages(session_dir: &Path) -> io::Result<Vec<ChatMessage>>
     let mut pending: Vec<String> = Vec::new();
     for msg in &messages {
         match msg {
-            ChatMessage::Assistant {
-                tool_calls: Some(tcs), ..
-            } => {
+            ChatMessage::Assistant { tool_calls: Some(tcs), .. } => {
                 pending = tcs.iter().map(|t| t.id.clone()).collect();
-            }
+            },
             ChatMessage::Tool { tool_call_id, .. } => {
                 pending.retain(|id| id != tool_call_id);
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
     for id in pending {
         tracing::info!(tool_call_id = %id, "patching dangling tool_call with interrupted response");
-        messages.push(ChatMessage::Tool {
-            tool_call_id: id,
-            name: None,
-            content: "interrupted".to_string(),
-        });
+        messages.push(ChatMessage::Tool { tool_call_id: id, name: None, content: "interrupted".to_string() });
     }
 
     Ok(messages)
@@ -1025,11 +1001,7 @@ mod tests {
     /// Build a minimal ChatMessage list for testing (no System messages).
     fn sample_messages() -> Vec<ChatMessage> {
         vec![
-            ChatMessage::User {
-                content: "hello".to_string(),
-                images: vec![],
-                ephemeral: false,
-            },
+            ChatMessage::User { content: "hello".to_string(), images: vec![], ephemeral: false },
             ChatMessage::Assistant {
                 content: Some("hi there".to_string()),
                 reasoning_content: Some("thinking...".to_string()),
@@ -1060,7 +1032,7 @@ mod tests {
                 assert!(reasoning_content.is_none(), "reasoning_content should be stripped");
                 assert!(thinking_signature.is_none(), "thinking_signature should be stripped");
                 assert!(tool_calls.is_none());
-            }
+            },
             other => panic!("expected Assistant, got {:?}", other),
         }
     }
@@ -1071,20 +1043,9 @@ mod tests {
         let dir = tmp.path();
 
         let msgs = vec![
-            ChatMessage::System {
-                content: "system prompt".to_string(),
-                ephemeral: false,
-            },
-            ChatMessage::User {
-                content: "ephemeral ask".to_string(),
-                images: vec![],
-                ephemeral: true,
-            },
-            ChatMessage::User {
-                content: "real question".to_string(),
-                images: vec![],
-                ephemeral: false,
-            },
+            ChatMessage::System { content: "system prompt".to_string(), ephemeral: false },
+            ChatMessage::User { content: "ephemeral ask".to_string(), images: vec![], ephemeral: true },
+            ChatMessage::User { content: "real question".to_string(), images: vec![], ephemeral: false },
         ];
         persist_window_messages(dir, &msgs).unwrap();
 
@@ -1119,11 +1080,7 @@ mod tests {
 
         // Assistant with two tool_calls, only one answered.
         let msgs = vec![
-            ChatMessage::User {
-                content: "run tools".to_string(),
-                images: vec![],
-                ephemeral: false,
-            },
+            ChatMessage::User { content: "run tools".to_string(), images: vec![], ephemeral: false },
             ChatMessage::Assistant {
                 content: None,
                 reasoning_content: None,
@@ -1158,7 +1115,7 @@ mod tests {
             ChatMessage::Tool { tool_call_id, content, .. } => {
                 assert_eq!(tool_call_id, "tc_dangling");
                 assert_eq!(content, "interrupted");
-            }
+            },
             other => panic!("expected patched Tool message, got {:?}", other),
         }
     }
@@ -1169,11 +1126,7 @@ mod tests {
         let dir = tmp.path();
 
         // Write an initial valid file.
-        let original = vec![ChatMessage::User {
-            content: "original".to_string(),
-            images: vec![],
-            ephemeral: false,
-        }];
+        let original = vec![ChatMessage::User { content: "original".to_string(), images: vec![], ephemeral: false }];
         persist_window_messages(dir, &original).unwrap();
 
         // Simulate a partial write by writing a truncated tmp and NOT renaming.
