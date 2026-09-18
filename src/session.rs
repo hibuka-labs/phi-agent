@@ -1103,7 +1103,7 @@ mod tests {
         let mut file = File::create(&path).unwrap();
         writeln!(file, r#"{{"User":{{"content":"good","images":[]}}}}"#).unwrap();
         writeln!(file, "NOT VALID JSON").unwrap();
-        writeln!(file, "").unwrap(); // empty line
+        writeln!(file).unwrap(); // empty line
         writeln!(file, r#"{{"User":{{"content":"also good","images":[]}}}}"#).unwrap();
 
         let loaded = load_session_messages(dir).unwrap();
