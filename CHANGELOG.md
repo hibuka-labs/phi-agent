@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-18
+
+### Added
+- **`memory` feature**: forwards `agent-works/memory` for persistent
+  auto-memory (Claude Code compatible storage).
+- **Re-export `RepeatToolLimitConfig` / `RepeatToolLimitMiddleware`** from
+  agent-base so products can configure repeated-tool-call-loop breaking
+  via the phi-agent facade.
+- **Skill injection plumbing** + JSONL session resume support.
+
 ## [0.15.0] - 2026-09-11
 
 ### Added
