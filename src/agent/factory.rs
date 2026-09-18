@@ -325,12 +325,12 @@ impl PhiAgent {
     /// Creates a fresh session (which receives a fresh System prompt), then
     /// replaces the chat messages with `[fresh_system] + messages`.  The
     /// caller must ensure `messages` contains **no** `System` messages — use
-    /// [`load_session_messages`] which filters them out automatically.
+    /// [`crate::session::load_session_messages`] which filters them out automatically.
     ///
     /// # Errors
     /// Returns an error if `messages` is empty / System-only, or if the
     /// combined sequence fails `validate_message_sequence` (e.g. dangling
-    /// tool calls).  Again, [`load_session_messages`] sanitizes all of this.
+    /// tool calls).  Again, [`crate::session::load_session_messages`] sanitizes all of this.
     pub async fn resume_session(&self, messages: Vec<ChatMessage>) -> AgentResult<SessionId> {
         let session_id = self.create_session().await;
         self.runtime()
