@@ -58,6 +58,7 @@ multi-agent = ["phi-kernel-tools/multi-agent", "agent-works/multi_agent"]
 mcp = ["agent-works/mcp"]
 focus = ["agent-works/focus"]
 compression = ["agent-works/compression"]
+memory = ["agent-works/memory"]
 browser = ["phi-tools", "phi-tools/browser"]
 telemetry = ["phi-telemetry"]
 logging = ["log-core"]
@@ -188,4 +189,5 @@ required-features = ["shell"]
 [[test]]
 name = "bridge_messages"
 path = "tests/stress/bridge_messages.rs"
+
 

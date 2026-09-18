@@ -81,6 +81,8 @@ pub use agent_works::memory::MemoryConfig;
 pub use agent_base::UserEvent;
 /// Middleware that nudges the model when it nears the turn limit.
 pub use agent_base::engine::max_turns_nudge::{MaxTurnsNudgeConfig, MaxTurnsNudgeMiddleware};
+/// Middleware that breaks repeated identical tool-call loops (e.g. polling).
+pub use agent_base::engine::repeat_tool_limit::{RepeatToolLimitConfig, RepeatToolLimitMiddleware};
 /// LLM provider trait family (`LlmProvider`, `Protocol`, `config::LlmConfig`):
 /// build a provider with [`create_provider`] and hand it to the runtime.
 pub use agent_base::llm_trait;
