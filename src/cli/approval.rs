@@ -120,6 +120,7 @@ mod tests {
             action_key: None,
             risk_level: RiskLevel::Destructive,
             raw: None,
+            source: None,
         };
         let cancel = tokio_util::sync::CancellationToken::new();
         let decision = handler.approve(request, cancel).await.unwrap();
@@ -135,6 +136,7 @@ mod tests {
             action_key: None,
             risk_level: RiskLevel::Safe,
             raw: None,
+            source: None,
         };
         let cancel = tokio_util::sync::CancellationToken::new();
         let decision = handler.approve(request, cancel).await.unwrap();
@@ -150,6 +152,7 @@ mod tests {
             action_key: None,
             risk_level: RiskLevel::Safe,
             raw: None,
+            source: None,
         };
         let cancel = tokio_util::sync::CancellationToken::new();
         let decision = handler.approve(request, cancel).await.unwrap();
@@ -168,6 +171,7 @@ mod tests {
             action_key: Some("write_file:src/lib.rs".to_string()),
             risk_level: RiskLevel::Sensitive,
             raw: None,
+            source: None,
         };
 
         let handle = {
@@ -198,6 +202,7 @@ mod tests {
             action_key: None,
             risk_level: RiskLevel::Safe,
             raw: None,
+            source: None,
         };
 
         let handle = {

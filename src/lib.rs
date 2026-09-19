@@ -56,7 +56,8 @@ pub use phi_telemetry::{
 pub use agent_works::focus::{Context as FocusContext, Focus, FocusError, FocusInput, FocusOutput};
 #[cfg(feature = "multi-agent")]
 pub use agent_works::multi_agent::{
-    ChildPermissionMode, ChildReport, ChildResultEvent, ControlConfig, MultiAgentConfig,
+    CapabilityResolution, ChildPermissionMode, ChildReport, ChildResultEvent, ChildToolCapability,
+    ControlConfig, MultiAgentConfig, resolve_capability,
 };
 // Child-result fan-in delivery policy — data-only routes; the consumer renders
 // the words. Sunk down from phimint's UI so any multi-agent UI reuses it.

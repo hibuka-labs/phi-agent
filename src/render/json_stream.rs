@@ -264,6 +264,7 @@ mod tests {
                 action_key: None,
                 risk_level: RiskLevel::Destructive,
                 raw: None,
+                source: None,
             },
             agent_id: None,
             trace_id: None,
