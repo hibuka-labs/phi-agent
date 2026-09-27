@@ -59,7 +59,7 @@ phi-agent 重导出了 [`agent-works`](https://docs.rs/agent-works) 的关键类
 | **Token 预算** | `TokenBudgetAction`、`TokenBudgetConfig`、`TokenBudgetCore`、`TokenBudgetState`、`DEFAULT_SEED_MESSAGE`、`build_context_window_info`、`token_budget_base_overhead` |
 | **上下文压缩** | `CompressionMiddleware`、`clear_compression_cache`、`run_compact_session`（`compression` feature） |
 | **MCP** | `McpServer`、`McpServerConfig`、`McpServeConfig`（`mcp` feature） |
-| **多 Agent** | `MultiAgentConfig`、`ChildPermissionMode`、`ChildReport`、`ChildResultEvent`、`ControlConfig` |
+| **多 Agent** | `MultiAgentConfig`、`ChildPermissionMode`、`ChildReport`、`ChildResultEvent`、`ControlConfig`、`ChildToolCapability`、`CapabilityResolution`、`resolve_capability` |
 | **Fan-in** | `ChildResultRoute`、`ChildResultRouter`（`multi-agent` feature） |
 | **注册表** | `AgentSnapshot`、`RegistrySnapshot`（`multi-agent` feature） |
 | **Skills** | `Skill`、`PromptSkill`（`skill` feature） |

@@ -21,7 +21,7 @@ phi-agent 支持生成子 Agent 进行并行任务执行。此功能由 `multi-a
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.9", features = ["multi-agent"] }
+phi-agent = { version = "0.17", features = ["multi-agent"] }
 ```
 
 或运行时：
@@ -54,11 +54,14 @@ cargo run --features multi-agent
 | `system_prompt` | 自定义 prompt；与 preset 同时给出时覆盖 preset 的 prompt |
 | `task` | 子 Agent 立即执行的首个任务（经任务队列串行投递） |
 | `fork_history` | 可选继承父上下文：`"none"`（默认）、`"all"`、或最近 N 轮 |
+| `tools` | 工具能力请求：`ReadOnly`（默认）、`Write`、或角色 preset（`researcher` \| `coder` \| `reviewer` \| `tester`） |
 
 生成被拒（数量超限、配置非法）时返回**错误**，而不是半个 Agent——父 Agent
 可以区分「创建成功」与「被拒绝」。成功结果会回显 `spawned_tools`：子 Agent
 在部署期排除规则后**实际**拿到的工具列表，父 Agent 不会误以为子 Agent 拥有
-它没有的权限。
+它没有的权限。`Write` 请求被策略拒绝时降级为只读——回显携带 `degraded` 原因
+而不是报错。对同路径已结束的前代 Agent 生成时会回收它（回显标记 `recycled`），
+而不是报 `AlreadyExists`。
 
 ## Agent 生命周期
 
@@ -94,6 +97,7 @@ let config = MultiAgentConfig {
     max_sub_agents: 10,          // 最大存活子 Agent 数
     max_agent_depth: 1,          // 子 Agent 不可再生成子 Agent
     child_read_only: false,      // 不附加只读提示（允许子 Agent 写）
+    allow_child_write: false,    // 硬门：false = 子 Agent 写请求降级为只读
     child_excluded_tools: vec!["decompose".into()], // 仅父级可用的工具，硬性排除
     ..MultiAgentConfig::enabled()
 };
@@ -103,7 +107,24 @@ let builder = base_agent_builder(llm_client)
 ```
 
 嵌套固定为一层（`max_agent_depth: 1`）：子 Agent 是叶子节点。
-子 Agent 工具的读写是**部署决策**——LLM 在 spawn 时不申请权限。
+子 Agent 工具的读写是**部署决策**——`tools` 参数表达的是请求，
+是否授予由 `allow_child_write` 决定。
+
+## 子 Agent 写能力
+
+子 Agent 默认只读。它能做什么由三层决定，全部在部署/spawn 期解析——
+LLM 从不参与权限谈判：
+
+- **能力请求** — spawn 的 `tools` 参数（缺省 `ReadOnly`，可选 `Write` 或角色
+  preset），由 `resolve_capability()` 解析为每次 spawn 的排除集。
+  `allow_child_write` 为 `false` 时 `Write` 请求降级为只读，
+  spawn 回显携带 `degraded_reason`。
+- **写门** — `child_write_gate`（默认 `true`）把写类工具包进文件级写门：
+  子 Agent 在任务期持有 claim，任务结束即释放，兄弟 Agent 不会互相覆盖
+  正在写的文件。父 Agent 豁免。
+- **审批路由** — 子 Agent 的审批请求携带 `ApprovalRequest.source`
+  （子 Agent 的 `agent_path`），allow-always 缓存按会话隔离：子 Agent 的
+  「始终允许」永远不会泄漏给父 Agent 或兄弟 Agent。
 
 ## 禁用
 

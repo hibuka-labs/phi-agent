@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-27
+
+### Added
+- **Re-export child write capability types** from `agent-works`
+  (`CapabilityResolution`, `ChildToolCapability`, `resolve_capability`, etc.) so
+  products can configure child-agent write permissions through the phi-agent
+  facade.
+
+### Changed
+- Dependency bumps: `agent-base` 0.8.0, `agent-works` 0.9.0,
+  `phi-kernel-tools` 0.9.0, `phi-telemetry` 0.7.0, `phi-tools` 0.6.0.
+- `ApprovalRequest` literal sites updated for the new `source` field
+  (`agent-types` 0.2.0).
+
 ## [0.16.0] - 2026-09-18
 
 ### Added

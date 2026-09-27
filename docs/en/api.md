@@ -59,7 +59,7 @@ phi-agent re-exports key types from [`agent-works`](https://docs.rs/agent-works)
 | **Token Budget** | `TokenBudgetAction`, `TokenBudgetConfig`, `TokenBudgetCore`, `TokenBudgetState`, `DEFAULT_SEED_MESSAGE`, `build_context_window_info`, `token_budget_base_overhead` |
 | **Compression** | `CompressionMiddleware`, `clear_compression_cache`, `run_compact_session` (behind `compression`) |
 | **MCP** | `McpServer`, `McpServerConfig`, `McpServeConfig` (behind `mcp`) |
-| **Multi-Agent** | `MultiAgentConfig`, `ChildPermissionMode`, `ChildReport`, `ChildResultEvent`, `ControlConfig` |
+| **Multi-Agent** | `MultiAgentConfig`, `ChildPermissionMode`, `ChildReport`, `ChildResultEvent`, `ControlConfig`, `ChildToolCapability`, `CapabilityResolution`, `resolve_capability` |
 | **Fan-in** | `ChildResultRoute`, `ChildResultRouter` (behind `multi-agent`) |
 | **Registry** | `AgentSnapshot`, `RegistrySnapshot` (behind `multi-agent`) |
 | **Skills** | `Skill`, `PromptSkill` (behind `skill`) |

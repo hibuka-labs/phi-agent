@@ -23,7 +23,7 @@ You can guide this behavior through the system prompt, for example:
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.9", features = ["multi-agent"] }
+phi-agent = { version = "0.17", features = ["multi-agent"] }
 ```
 
 Or at runtime:
@@ -57,12 +57,16 @@ When `multi-agent` is enabled, 5 tools are registered:
 | `system_prompt` | Custom prompt; overrides a preset's prompt |
 | `task` | The first thing the child works on (delivered via its task queue) |
 | `fork_history` | Optional parent context: `"none"` (default), `"all"`, or a number of recent turns |
+| `tools` | Tool capability request: `ReadOnly` (default), `Write`, or a role preset (`researcher` \| `coder` \| `reviewer` \| `tester`) |
 
 A rejected spawn (sub-agent limit, bad config) returns an **error**, not a
 half-created agent — the parent can tell "created" from "rejected". The
 success result echoes `spawned_tools`: the tools the child *actually* got
 after deployment exclusions, so the parent never assumes a permission the
-child lacks.
+child lacks. A `Write` request that policy denies degrades to read-only —
+the echo carries a `degraded` reason instead of failing. Spawning over a
+finished same-path predecessor recycles it (the echo marks `recycled`)
+instead of failing with `AlreadyExists`.
 
 ## Agent lifecycle
 
@@ -99,6 +103,7 @@ let config = MultiAgentConfig {
     max_sub_agents: 10,          // Max live sub-agents
     max_agent_depth: 1,          // Children cannot spawn their own children
     child_read_only: false,      // Suggest children may write (prompt-level nudge)
+    allow_child_write: false,    // Hard gate: false = child write requests degrade to read-only
     child_excluded_tools: vec!["decompose".into()], // root-only tools, hard-excluded
     ..MultiAgentConfig::enabled()
 };
@@ -108,8 +113,26 @@ let builder = base_agent_builder(llm_client)
 ```
 
 Nesting is fixed at one level (`max_agent_depth: 1`): sub-agents are leaves.
-Read/write of child tools is a **deployment decision** — the LLM does not
-request permissions when spawning.
+Read/write of child tools is a **deployment decision** — the `tools` parameter
+expresses a request; `allow_child_write` decides whether it is granted.
+
+## Child write capability
+
+Children are read-only by default. Three layers decide what a child can do,
+all resolved at deployment/spawn time — never negotiated by the LLM:
+
+- **Capability request** — spawn's `tools` parameter (`ReadOnly` default,
+  `Write`, or a role preset) is resolved by `resolve_capability()` into a
+  per-spawn exclusion set. A `Write` request while `allow_child_write` is
+  `false` degrades to read-only with a `degraded_reason` in the spawn echo.
+- **Write gate** — with `child_write_gate` (default `true`), write-class tools
+  are wrapped in a file-level gate: a child holds a claim for its task
+  lifetime and the claim is released when the task ends, so siblings cannot
+  clobber each other's in-flight files. The parent agent is exempt.
+- **Approval routing** — child approval requests carry
+  `ApprovalRequest.source` (the child's `agent_path`), and the allow-always
+  cache is scoped per session: a child's "always" never leaks to the parent
+  or siblings.
 
 ## Disabling
 
