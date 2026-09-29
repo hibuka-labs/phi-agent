@@ -29,7 +29,7 @@ pub mod session;
 // For the bare runtime builder, use agent_base::AgentBuilder directly.
 pub use agent_base::{
     AgentError, AgentResult, AgentRuntime, AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler, ApprovalRequest,
-    ChatMessage, CheckpointData, CheckpointStep, ConsecutiveFailureRecovery, Content, ContextCompaction,
+    ChatMessage, CheckpointData, CheckpointStep, CompactionKind, CompactionOutcome, ConsecutiveFailureRecovery, Content, ContextCompaction,
     ContextWindowManager, DenyAllApprovalHandler, FinishReason, Language, Middleware, PlanItem, PlanStepStatus,
     PostLlmCtx, PreLlmCtx, ReasoningConfig, ReasoningEffort, RetryOnError, RiskLevel, RunOutcome, RuntimeEvent,
     SafetyConfig, SessionId, Tool, ToolContext, ToolDecision, ToolMetadata, ToolPolicy, ToolRegistry,
