@@ -115,6 +115,9 @@ impl EventRenderer for JsonStreamRenderer {
             },
             RuntimeEvent::UserEvent { .. } => {},
             RuntimeEvent::Checkpoint { .. } => {},
+            // Drafts are liveness ticks for a status line; the JSON stream is
+            // a line-oriented record of materialized events only.
+            RuntimeEvent::ToolCallDraft { .. } => {},
             RuntimeEvent::RunFinished { .. } => {},
             RuntimeEvent::RunCancelled { .. } => {
                 self.emit_event(&event, json!({ "type": "run_cancelled" }))?;

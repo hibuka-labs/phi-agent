@@ -54,6 +54,11 @@ pub fn event_to_value(event: &RuntimeEvent) -> serde_json::Value {
         RuntimeEvent::TextDelta { text, .. } => {
             serde_json::json!({"type": "text_delta", "text": text})
         },
+        RuntimeEvent::ToolCallDraft { name, args_len, count, .. } => {
+            // Progress on a call still being streamed in — recorded (not
+            // rendered) so the turn log can explain a silent window.
+            serde_json::json!({"type": "tool_call_draft", "tool": name, "args_len": args_len, "count": count})
+        },
         RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => {
             let args: serde_json::Value = serde_json::from_str(args_json).unwrap_or(serde_json::Value::Null);
             serde_json::json!({"type": "tool_call_started", "tool": tool_name, "args": args})

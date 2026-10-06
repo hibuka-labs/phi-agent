@@ -185,6 +185,9 @@ impl EventRenderer for TerminalRenderer {
                 None => self.write_line(&format!("\n{} Cancelled", self.yellow("⚠")))?,
             },
             RuntimeEvent::RunFinished { .. } => {},
+            // Liveness ticks for a live status line; a line-based CLI has no
+            // such line, and per-bucket rewrites would only spam the output.
+            RuntimeEvent::ToolCallDraft { .. } => {},
             RuntimeEvent::UserEvent { event: agent_base::UserEvent::Progress { text }, .. } => {
                 self.write_line(&format!("\r\x1b[K{}", self.green(text)))?;
             },
