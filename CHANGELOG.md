@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-07
+
+### Added
+- Record `ToolCallDraft` in the event log; line renderers skip drafts
+- Re-export `NoticeKind` for `UserEvent::Notice` consumers
+- Re-export `CompactionKind` and `CompactionOutcome` (#33)
+
 ## [0.17.0] - 2026-09-27
 
 ### Added

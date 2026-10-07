@@ -149,13 +149,13 @@ Each crate uses Cargo feature flags to control what gets compiled. Don't need it
 
 ```toml
 # Lightweight: file tools + MCP only
-phi-agent = { version = "0.12", default-features = false, features = ["file", "mcp"] }
+phi-agent = { version = "0.18", default-features = false, features = ["file", "mcp"] }
 
 # Standard: default config (file + MCP + focus + compression + telemetry + logging)
-phi-agent = { version = "0.12" }
+phi-agent = { version = "0.18" }
 
 # Full: everything (except browser)
-phi-agent = { version = "0.12", features = ["full"] }
+phi-agent = { version = "0.18", features = ["full"] }
 ```
 
 ### Telemetry & Observability

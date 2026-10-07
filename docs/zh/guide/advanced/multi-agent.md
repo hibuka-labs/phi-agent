@@ -21,7 +21,7 @@ phi-agent 支持生成子 Agent 进行并行任务执行。此功能由 `multi-a
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.17", features = ["multi-agent"] }
+phi-agent = { version = "0.18", features = ["multi-agent"] }
 ```
 
 或运行时：

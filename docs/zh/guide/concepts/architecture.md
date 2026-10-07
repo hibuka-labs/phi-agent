@@ -149,13 +149,13 @@ graph TB
 
 ```toml
 # 轻量：只要文件工具 + MCP
-phi-agent = { version = "0.12", default-features = false, features = ["file", "mcp"] }
+phi-agent = { version = "0.18", default-features = false, features = ["file", "mcp"] }
 
 # 标准：默认配置（文件 + MCP + focus + 压缩 + 遥测 + 日志）
-phi-agent = { version = "0.12" }
+phi-agent = { version = "0.18" }
 
 # 全量：全部功能（不含 browser）
-phi-agent = { version = "0.12", features = ["full"] }
+phi-agent = { version = "0.18", features = ["full"] }
 ```
 
 ### 可观测性

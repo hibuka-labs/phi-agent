@@ -22,7 +22,7 @@ cargo add phi-agent --features shell,multi-agent
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.10", features = ["shell", "multi-agent"] }
+phi-agent = { version = "0.18", features = ["shell", "multi-agent"] }
 ```
 
 ### Command line
@@ -93,7 +93,7 @@ cargo install phi-agent --features shell
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.10", features = ["multi-agent"] }
+phi-agent = { version = "0.18", features = ["multi-agent"] }
 ```
 
 ---

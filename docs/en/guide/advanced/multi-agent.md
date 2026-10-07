@@ -23,7 +23,7 @@ You can guide this behavior through the system prompt, for example:
 
 ```toml
 [dependencies]
-phi-agent = { version = "0.17", features = ["multi-agent"] }
+phi-agent = { version = "0.18", features = ["multi-agent"] }
 ```
 
 Or at runtime:
