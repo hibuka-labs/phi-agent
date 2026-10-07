@@ -203,3 +203,49 @@ pub enum MetricsCmd {
         output: Option<PathBuf>,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    /// `ReasoningEffort` does not implement `PartialEq`, so the mapping is
+    /// asserted with exhaustive `matches!` checks instead.
+    fn assert_maps_to(arg: ReasoningEffortArg, expected: ReasoningEffort) {
+        let mapped = ReasoningEffort::from(arg);
+        assert!(
+            matches!(
+                (&mapped, &expected),
+                (ReasoningEffort::Low, ReasoningEffort::Low)
+                    | (ReasoningEffort::Medium, ReasoningEffort::Medium)
+                    | (ReasoningEffort::High, ReasoningEffort::High)
+                    | (ReasoningEffort::XHigh, ReasoningEffort::XHigh)
+            ),
+            "expected {expected:?}, got {mapped:?}"
+        );
+    }
+
+    #[test]
+    fn reasoning_effort_arg_maps_to_reasoning_effort() {
+        assert_maps_to(ReasoningEffortArg::Low, ReasoningEffort::Low);
+        assert_maps_to(ReasoningEffortArg::Medium, ReasoningEffort::Medium);
+        assert_maps_to(ReasoningEffortArg::High, ReasoningEffort::High);
+        // The variant is spelled `Xhigh` on the arg side and `XHigh` on the domain side.
+        assert_maps_to(ReasoningEffortArg::Xhigh, ReasoningEffort::XHigh);
+    }
+
+    #[test]
+    fn thinking_effort_flag_round_trips_to_reasoning_effort() {
+        for (flag, expected) in [
+            ("low", ReasoningEffort::Low),
+            ("medium", ReasoningEffort::Medium),
+            ("high", ReasoningEffort::High),
+            ("xhigh", ReasoningEffort::XHigh),
+        ] {
+            let args = CliArgs::try_parse_from(["phi", "--thinking-effort", flag])
+                .unwrap_or_else(|err| panic!("--thinking-effort {flag} should parse: {err}"));
+            assert_maps_to(args.thinking_effort, expected);
+        }
+        assert!(CliArgs::command().get_arguments().any(|a| a.get_long() == Some("thinking-effort")));
+    }
+}
