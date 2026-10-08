@@ -3,7 +3,7 @@
 //! Extracted from main.rs to keep the entry point focused on config assembly.
 
 use anyhow::Result;
-use phi_agent::{format_number, SessionMetrics};
+use phi_agent::{SessionMetrics, format_number};
 use phi_telemetry::{SessionOutcome, TurnOutcome, list_all_metrics, load_metrics};
 
 use crate::args::{CliArgs, MetricsCmd, MetricsSort, OutputFormatArg};
