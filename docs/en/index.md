@@ -11,9 +11,9 @@ hide:
 
 <div class="phi-hero" markdown>
 
-**Don't just let AI chat — let it finish the job**
+**Not just good at chat — it gets the job done right**
 
-Generic agents are everywhere, but the real work — your work — needs an agent that knows your business. phi-agent is the lightweight runtime foundation for building it — you just write tools and domain prompts, and it finishes the job on its own.
+Generic agents are everywhere, but the real work — your work — needs an agent that knows your business. phi-agent is the lightweight runtime foundation for building it — you just write tools and domain prompts, and it gets the job done right on its own.
 
 <a href="guide/getting-started/" class="md-button md-button--primary" style="margin-right: 0.5rem">
   :octicons-arrow-right-24: &nbsp; Get Started

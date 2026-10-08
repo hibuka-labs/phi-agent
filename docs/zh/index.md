@@ -11,9 +11,9 @@ hide:
 
 <div class="phi-hero" markdown>
 
-**让 AI 不只是聊天，而是把事做完**
+**不只是会聊天，更能把事做好**
 
-通用 Agent 遍地都是，但你业务里的事，只有懂你业务的 Agent 才做得完。phi-agent 就是构建这种 Agent 的轻巧运行时底座——你只要写工具、领域提示词，它就能自主把事做完。
+通用 Agent 遍地都是，但你业务里的事，只有懂你业务的 Agent 才做得好。phi-agent 就是构建这种 Agent 的轻巧运行时底座——你只要写工具、领域提示词，它就能自主把事做好。
 
 <a href="guide/getting-started/" class="md-button md-button--primary" style="margin-right: 0.5rem">
   :octicons-arrow-right-24: &nbsp; 快速开始
