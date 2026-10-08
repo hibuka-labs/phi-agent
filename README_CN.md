@@ -179,6 +179,30 @@ cargo check
 
 详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 贡献者 ✨
+
+感谢这些优秀的人：
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/aislopking024"><img src="https://avatars.githubusercontent.com/u/106123738?v=4" width="100px;" alt="aislopking024"/><br /><sub><b>shard</b></sub></a><br /><a href="https://github.com/hibuka-labs/phi-agent/commits?author=aislopking024" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Krshs90"><img src="https://avatars.githubusercontent.com/u/201503093?v=4" width="100px;" alt="Krshs90"/><br /><sub><b>Krish Shah</b></sub></a><br /><a href="https://github.com/hibuka-labs/phi-agent/commits?author=Krshs90" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/slegarraga"><img src="https://avatars.githubusercontent.com/u/64795732?v=4" width="100px;" alt="slegarraga"/><br /><sub><b>Sebastian Legarraga</b></sub></a><br /><a href="https://github.com/hibuka-labs/phi-agent/commits?author=slegarraga" title="Code">💻</a> <a href="https://github.com/hibuka-labs/phi-agent/commits?author=slegarraga" title="Tests">⚠️</a> <a href="https://github.com/hibuka-labs/phi-agent/commits?author=slegarraga" title="Examples">💡</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MsfPablo"><img src="https://avatars.githubusercontent.com/u/129399053?v=4" width="100px;" alt="MsfPablo"/><br /><sub><b>Pablo Garcia</b></sub></a><br /><a href="https://github.com/hibuka-labs/phi-agent/commits?author=MsfPablo" title="Code">💻</a> <a href="https://github.com/hibuka-labs/phi-agent/commits?author=MsfPablo" title="Tests">⚠️</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/LetMeSleep8h"><img src="https://avatars.githubusercontent.com/u/183817470?v=4" width="100px;" alt="LetMeSleep8h"/><br /><sub><b>Sleep8h</b></sub></a><br /><a href="https://github.com/hibuka-labs/phi-agent/commits?author=LetMeSleep8h" title="Code">💻</a> <a href="https://github.com/hibuka-labs/phi-agent/commits?author=LetMeSleep8h" title="Tests">⚠️</a></td>
+    </tr>
+  </tbody>
+</table>
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+（[emoji 含义](https://allcontributors.org/docs/en/emoji-key)）— 本项目遵循 [all-contributors](https://github.com/all-contributors/all-contributors) 规范。
+
 ## 许可证
 
 MIT — 详见 [LICENSE](LICENSE)。

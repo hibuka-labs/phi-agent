@@ -1,0 +1,16 @@
+{
+  "projectName": "phi-agent",
+  "projectOwner": "hibuka-labs",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md",
+    "README_CN.md"
+  ],
+  "imageSize": 100,
+  "commit": true,
+  "commitConvention": "angular",
+  "linkToUsage": true,
+  "skipCi": true,
+  "contributorsPerLine": 7
+}
