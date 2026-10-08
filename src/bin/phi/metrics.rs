@@ -3,7 +3,7 @@
 //! Extracted from main.rs to keep the entry point focused on config assembly.
 
 use anyhow::Result;
-use phi_agent::SessionMetrics;
+use phi_agent::{format_number, SessionMetrics};
 use phi_telemetry::{SessionOutcome, TurnOutcome, list_all_metrics, load_metrics};
 
 use crate::args::{CliArgs, MetricsCmd, MetricsSort, OutputFormatArg};
@@ -225,49 +225,4 @@ pub fn print_session_detail(metrics: &SessionMetrics, session_id: &str) {
         }
     }
     println!();
-}
-
-pub fn format_number(n: u64) -> String {
-    if n >= 1_000_000 {
-        format!("{:.1}M", n as f64 / 1_000_000.0)
-    } else if n >= 1_000 {
-        format!("{:.1}K", n as f64 / 1_000.0)
-    } else {
-        n.to_string()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::format_number;
-
-    #[test]
-    fn small_numbers_are_unformatted() {
-        assert_eq!(format_number(0), "0");
-        assert_eq!(format_number(42), "42");
-        assert_eq!(format_number(999), "999");
-    }
-
-    #[test]
-    fn thousands_use_k_suffix_with_one_decimal() {
-        assert_eq!(format_number(1_000), "1.0K");
-        assert_eq!(format_number(1_500), "1.5K");
-        assert_eq!(format_number(999_999), "1000.0K");
-    }
-
-    #[test]
-    fn millions_use_m_suffix_with_one_decimal() {
-        assert_eq!(format_number(1_000_000), "1.0M");
-        assert_eq!(format_number(2_500_000), "2.5M");
-    }
-
-    #[test]
-    fn boundaries_land_in_the_right_bucket() {
-        // Just below and exactly at each threshold: the buckets must not
-        // leak into each other.
-        assert_eq!(format_number(999), "999"); // still plain
-        assert_eq!(format_number(1_000), "1.0K"); // K starts here
-        assert_eq!(format_number(999_999), "1000.0K"); // still K
-        assert_eq!(format_number(1_000_000), "1.0M"); // M starts here
-    }
 }
