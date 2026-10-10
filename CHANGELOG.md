@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-10-11
+
+### Added
+- **`format_number`** is now a public helper at the library root — compact metrics
+  formatting (`999` plain, `1.2K`, `3.4M`), deduplicated out of the CLI metrics
+  module (#42).
+
+### Changed
+- Dependency bumps: `llm-unified` 0.1.4 — SSE keep-alive sentinel / `[DONE]`
+  tolerance and a more patient 429 rate-limit backoff.
+- Documentation: hero slogan rework, contributors table restored in the
+  all-contributors format (with `.all-contributorsrc`), good-first-issues batch 3,
+  `format_number` added to the API reference, dead `blob/master` links fixed.
+
 ## [0.18.0] - 2026-10-07
 
 ### Added

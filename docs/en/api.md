@@ -23,6 +23,12 @@ phi-agent's API documentation is auto-generated from doc comments and hosted on 
 | `base_agent_builder_with_excludes()` | Builder that skips specific kernel tools |
 | `base_agent_builder_with_options()` | Builder accepting custom `CompressionConfig` |
 
+## Utility Functions
+
+| Function | Description |
+|----------|-------------|
+| `format_number(n: u64)` | Compact number formatting for metrics displays: plain below 1K, then `1.2K`, `3.4M` |
+
 ## Re-exports from agent-base
 
 phi-agent re-exports key types from [`agent-base`](https://docs.rs/agent-base):

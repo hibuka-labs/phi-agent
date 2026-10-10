@@ -23,6 +23,12 @@ phi-agent 的 API 文档从源码注释自动生成，托管在 [docs.rs](https:
 | `base_agent_builder_with_excludes()` | 跳过指定内核工具的构建器 |
 | `base_agent_builder_with_options()` | 接受自定义 `CompressionConfig` 的构建器 |
 
+## 工具函数
+
+| 函数 | 描述 |
+|------|------|
+| `format_number(n: u64)` | 指标展示用紧凑数字格式：千以下原样，往上 `1.2K`、`3.4M` |
+
 ## agent-base 重导出
 
 phi-agent 重导出了 [`agent-base`](https://docs.rs/agent-base) 的关键类型：

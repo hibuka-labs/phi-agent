@@ -78,7 +78,7 @@ agent.run_turn(session, "我觉得有点冷", |e| renderer.render(e)).await?;
 cargo add phi-agent
 ```
 
-完整可运行版本见 [`examples/minimal/landing.rs`](https://github.com/hibuka-labs/phi-agent/blob/master/examples/minimal/landing.rs)。
+完整可运行版本见 [`examples/minimal/landing.rs`](https://github.com/hibuka-labs/phi-agent/blob/main/examples/minimal/landing.rs)。
 
 ---
 

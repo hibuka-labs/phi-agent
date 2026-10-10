@@ -78,7 +78,7 @@ agent.run_turn(session, “I feel a bit cold”, |e| renderer.render(e)).await?;
 cargo add phi-agent
 ```
 
-Full runnable version: [`examples/minimal/landing.rs`](https://github.com/hibuka-labs/phi-agent/blob/master/examples/minimal/landing.rs).
+Full runnable version: [`examples/minimal/landing.rs`](https://github.com/hibuka-labs/phi-agent/blob/main/examples/minimal/landing.rs).
 
 ---
 
