@@ -1,4 +1,5 @@
 //! Metrics display — `phi metrics` subcommand output formatting.
+//! JSON `show` and `last` return a single full metrics object; `list` returns an array of summaries.
 //!
 //! Extracted from main.rs to keep the entry point focused on config assembly.
 
@@ -91,6 +92,10 @@ pub fn handle_metrics(cmd: &MetricsCmd, args: &CliArgs) -> Result<()> {
             }
 
             let metrics = load_metrics(&session_dir)?;
+            if args.format == OutputFormatArg::Json {
+                println!("{}", serde_json::to_string_pretty(&metrics)?);
+                return Ok(());
+            }
             print_session_detail(&metrics, session_id);
         },
 
@@ -100,6 +105,10 @@ pub fn handle_metrics(cmd: &MetricsCmd, args: &CliArgs) -> Result<()> {
                 Some(summary) => {
                     let session_dir = log_dir_path.join("sessions").join(&summary.session_id);
                     let metrics = load_metrics(&session_dir)?;
+                    if args.format == OutputFormatArg::Json {
+                        println!("{}", serde_json::to_string_pretty(&metrics)?);
+                        return Ok(());
+                    }
                     print_session_detail(&metrics, &summary.session_id);
                 },
                 None => {
