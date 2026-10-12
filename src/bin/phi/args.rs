@@ -20,7 +20,7 @@ pub struct CliArgs {
     pub command: Option<SubCommand>,
 
     // ── Output control ──
-    #[arg(long, value_enum, default_value = "terminal")]
+    #[arg(long, value_enum, global = true, default_value = "terminal")]
     pub format: OutputFormatArg,
 
     /// Hide AI thinking process

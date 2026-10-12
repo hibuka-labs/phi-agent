@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Add coverage for the LLM configuration resolution priority chain.
 
+### Fixed
+- Honor `--format json` for `phi metrics show` and `last`, returning a full metrics object. Accept `--format` before or after subcommands (#38).
+
 ## [0.18.1] - 2026-10-11
 
 ### Added
