@@ -168,7 +168,104 @@ pub fn get_or_create_session_dir(session_id: &str, base_dir: &Path) -> AgentResu
     // Update session_meta.json
     update_session_meta(&session_dir, session_id)?;
 
+    // Birthplace: the working directory the session was first opened in.
+    // Recorded once, at creation — a session keeps its home workspace for
+    // life, so resuming it from somewhere else must not move it into that
+    // workspace's list. Sessions that predate this field stay untagged here;
+    // a product layer may file them later from other evidence, but never
+    // from wherever they happen to be reopened.
+    if is_new && let Some(cwd) = current_workspace_dir() {
+        write_session_cwd(&session_dir, Some(&cwd), CwdSource::Recorded);
+    }
+
     Ok((session_dir, is_new))
+}
+
+/// The home workspace of a session about to be created: the process working
+/// directory, canonicalized so a symlinked launch path and its real path land
+/// in the same bucket.
+fn current_workspace_dir() -> Option<PathBuf> {
+    let cwd = std::env::current_dir().ok()?;
+    Some(std::fs::canonicalize(&cwd).unwrap_or(cwd))
+}
+
+/// Where a session's `cwd` came from. Stored beside `cwd` in
+/// `session_meta.json` so a value stitched together after the fact is never
+/// mistaken for one recorded at birth.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CwdSource {
+    /// Written at creation from the process working directory. Authoritative.
+    Recorded,
+    /// Filed later, from the paths the session touched. Best evidence
+    /// available — not proof.
+    Recovered,
+    /// A later pass looked and found no defensible answer. Never retried:
+    /// the evidence in a finished session does not change.
+    Unrecoverable,
+}
+
+impl CwdSource {
+    fn as_str(self) -> &'static str {
+        match self {
+            CwdSource::Recorded => "recorded",
+            CwdSource::Recovered => "recovered",
+            CwdSource::Unrecoverable => "unrecoverable",
+        }
+    }
+
+    fn parse(s: &str) -> Option<Self> {
+        match s {
+            "recorded" => Some(CwdSource::Recorded),
+            "recovered" => Some(CwdSource::Recovered),
+            "unrecoverable" => Some(CwdSource::Unrecoverable),
+            _ => None,
+        }
+    }
+}
+
+/// Record a session's home workspace, and where that value came from.
+///
+/// `cwd` is `None` only with [`CwdSource::Unrecoverable`]: a pass looked for
+/// a home and declined to guess. Writing `None` there is what keeps the pass
+/// from re-reading every finished session on every launch.
+///
+/// Best-effort: a metadata write failure must not fail the caller.
+pub fn write_session_cwd(session_dir: &Path, cwd: Option<&Path>, source: CwdSource) {
+    let meta_path = session_dir.join("session_meta.json");
+    let mut meta = match std::fs::read_to_string(&meta_path)
+        .ok()
+        .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
+    {
+        Some(meta) => meta,
+        None => return,
+    };
+    if let Some(cwd) = cwd {
+        meta["cwd"] = serde_json::json!(cwd.to_string_lossy());
+    }
+    meta["cwd_source"] = serde_json::json!(source.as_str());
+    if let Err(e) = std::fs::write(&meta_path, serde_json::to_string_pretty(&meta).unwrap_or_default()) {
+        tracing::warn!(error = %e, "failed to record session workspace");
+    }
+}
+
+/// Read the session's home workspace from `session_meta.json`.
+///
+/// `None` for sessions created before the field existed, and for sessions a
+/// recovery pass declined to file.
+pub fn read_session_cwd(session_dir: &Path) -> Option<PathBuf> {
+    let content = std::fs::read_to_string(session_dir.join("session_meta.json")).ok()?;
+    let meta: serde_json::Value = serde_json::from_str(&content).ok()?;
+    meta["cwd"].as_str().filter(|s| !s.is_empty()).map(PathBuf::from)
+}
+
+/// Where the session's `cwd` came from, if it was written with provenance.
+///
+/// `None` for metadata written before provenance existed — those values were
+/// recorded at creation.
+pub fn read_session_cwd_source(session_dir: &Path) -> Option<CwdSource> {
+    let content = std::fs::read_to_string(session_dir.join("session_meta.json")).ok()?;
+    let meta: serde_json::Value = serde_json::from_str(&content).ok()?;
+    meta["cwd_source"].as_str().and_then(CwdSource::parse)
 }
 
 /// Acquire an exclusive file lock on the session directory.
@@ -312,13 +409,25 @@ pub struct SessionInfo {
     pub last_active_at: SystemTime,
     /// Path to the session directory.
     pub session_dir: PathBuf,
+    /// Home workspace — the process cwd when the session was created.
+    ///
+    /// `None` for sessions created before the field existed. Listing them is
+    /// still correct; only a workspace-scoped view has no place to put them.
+    pub cwd: Option<PathBuf>,
 }
 
 /// List resumable sessions under `base_dir/sessions/`.
 ///
 /// Scans session directories, filters out locked / empty / current sessions,
-/// and returns entries sorted by `messages.jsonl` mtime descending (newest first).
+/// and returns entries sorted by last activity descending (newest first).
 /// Any framework consumer can use this to present a session history list.
+///
+/// A session counts as resumable if it has **any** conversation evidence:
+/// `messages.jsonl` (the normal case), turn logs, or a history archive.
+/// Gating on `messages.jsonl` alone hid real sessions from the picker — a
+/// context rotation used to delete that file after archiving, so a session
+/// that rotated and then died was listed nowhere and its history was
+/// unreachable.
 pub fn list_sessions(base_dir: &Path, current_session_id: Option<&str>) -> Vec<SessionInfo> {
     let sessions_dir = base_dir.join("sessions");
     if !sessions_dir.exists() {
@@ -354,30 +463,92 @@ pub fn list_sessions(base_dir: &Path, current_session_id: Option<&str>) -> Vec<S
             drop(file);
         }
 
-        // messages.jsonl must exist and contain at least one message.
+        // Any of the three evidence sources makes the session resumable.
         let messages_path = path.join("messages.jsonl");
-        if !messages_path.exists() {
+        let has_messages = messages_path.exists();
+        if !has_messages && !has_turn_logs(&path) && !has_history_archive(base_dir, &session_id) {
             continue;
         }
 
-        let title = extract_session_title(&path);
+        let title = extract_session_title(&path, base_dir);
         if title.is_empty() {
             continue;
         }
 
-        let mtime = std::fs::metadata(&messages_path).and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH);
+        // Newest evidence wins: messages.jsonl is usually the freshest, but
+        // for an archive-only session the turn logs / archived windows are
+        // all there is to sort by.
+        let mtime = std::fs::metadata(&messages_path)
+            .and_then(|m| m.modified())
+            .or_else(|_| newest_evidence_mtime(&path, base_dir, &session_id))
+            .unwrap_or(SystemTime::UNIX_EPOCH);
 
-        entries.push(SessionInfo { session_id, title, last_active_at: mtime, session_dir: path });
+        let cwd = read_session_cwd(&path);
+        entries.push(SessionInfo { session_id, title, last_active_at: mtime, session_dir: path, cwd });
     }
 
     entries.sort_by_key(|e| std::cmp::Reverse(e.last_active_at));
     entries
 }
 
+/// Whether the session directory holds any `turn_*.jsonl` turn log.
+fn has_turn_logs(session_dir: &Path) -> bool {
+    std::fs::read_dir(session_dir)
+        .map(|rd| {
+            rd.flatten().any(|e| {
+                let name = e.file_name();
+                let name = name.to_string_lossy();
+                name.starts_with("turn_") && name.ends_with(".jsonl")
+            })
+        })
+        .unwrap_or(false)
+}
+
+/// Whether a context-rotation history archive exists for this session.
+///
+/// Directory shape only — the record schema is owned by
+/// `phi_kernel_tools::context_rotation::history`.
+fn has_history_archive(base_dir: &Path, session_id: &str) -> bool {
+    std::fs::read_dir(base_dir.join("history").join(session_id).join("windows"))
+        .map(|rd| rd.flatten().next().is_some())
+        .unwrap_or(false)
+}
+
+/// Last-modified time of the newest non-`messages.jsonl` evidence.
+fn newest_evidence_mtime(session_dir: &Path, base_dir: &Path, session_id: &str) -> std::io::Result<SystemTime> {
+    let mut newest: Option<SystemTime> = None;
+    let mut consider = |p: PathBuf| {
+        if let Ok(m) = std::fs::metadata(&p)
+            && let Ok(t) = m.modified()
+            && newest.is_none_or(|n| t > n)
+        {
+            newest = Some(t);
+        }
+    };
+
+    if let Ok(rd) = std::fs::read_dir(session_dir) {
+        for e in rd.flatten() {
+            let name = e.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("turn_") && name.ends_with(".jsonl") {
+                consider(e.path());
+            }
+        }
+    }
+    if let Ok(rd) = std::fs::read_dir(base_dir.join("history").join(session_id).join("windows")) {
+        for e in rd.flatten() {
+            consider(e.path());
+        }
+    }
+
+    newest.ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no session evidence"))
+}
+
 /// Extract a display title for a session.
 ///
-/// Priority: LLM-generated title → first User message → turn_001 user_input → empty.
-fn extract_session_title(session_dir: &Path) -> String {
+/// Priority: LLM-generated title → first User message → turn_001 user_input →
+/// first user message in the history archive → empty.
+fn extract_session_title(session_dir: &Path, base_dir: &Path) -> String {
     // 1. LLM-generated title from session_meta.json.
     if let Some(title) = read_session_title(session_dir) {
         return title;
@@ -408,6 +579,33 @@ fn extract_session_title(session_dir: &Path) -> String {
                 && let Some(input) = val.get("user_input").and_then(|u| u.as_str())
             {
                 return truncate_display(input, 60);
+            }
+        }
+    }
+
+    // 4. First user message in the history archive. A context rotation used
+    //    to delete messages.jsonl after archiving, so a session that rotated
+    //    and then died has neither messages.jsonl nor a turn_001 user_input —
+    //    the archive is the only place its opening message survives. Schema
+    //    owner is `phi_kernel_tools::context_rotation::history`; this is a
+    //    display title, so a schema-light peek is enough (same pattern as the
+    //    turn_001 fallback above).
+    if let Some(session_id) = session_dir.file_name().and_then(|n| n.to_str()) {
+        let windows_dir = base_dir.join("history").join(session_id).join("windows");
+        if let Ok(rd) = std::fs::read_dir(&windows_dir) {
+            let mut files: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
+            files.sort();
+            for file in files {
+                let Ok(content) = std::fs::read_to_string(&file) else { continue };
+                for line in content.lines() {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(line)
+                        && val.get("role").and_then(|r| r.as_str()) == Some("user")
+                        && let Some(text) = val.get("content").and_then(|c| c.as_str())
+                        && !text.trim().is_empty()
+                    {
+                        return truncate_display(text, 60);
+                    }
+                }
             }
         }
     }
@@ -506,6 +704,31 @@ pub fn load_session_messages(session_dir: &Path) -> io::Result<Vec<ChatMessage>>
         }
         strip_stale_fields(&mut msg);
         messages.push(msg);
+    }
+
+    // Drop Tool messages whose call id was never issued by a preceding
+    // Assistant. A recovered or archived transcript can carry tool results
+    // whose originating `tool_calls` did not survive, and
+    // `validate_message_sequence` rejects an unanswered Tool outright — so
+    // without this the sessions that most need recovering fail to resume at
+    // all. `retain` runs left to right, so each id is claimed by the
+    // Assistant that issued it and a duplicate Tool answer is dropped too
+    // (that is exactly what the validator would reject).
+    let mut issued: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let before = messages.len();
+    messages.retain(|msg| match msg {
+        ChatMessage::Assistant { tool_calls: Some(tcs), .. } => {
+            for tc in tcs {
+                issued.insert(tc.id.clone());
+            }
+            true
+        },
+        ChatMessage::Tool { tool_call_id, .. } => issued.remove(tool_call_id),
+        _ => true,
+    });
+    let dropped = before - messages.len();
+    if dropped > 0 {
+        tracing::info!(dropped, "dropped orphan tool results with no issuing tool_call");
     }
 
     // Patch dangling tool calls at the tail.  A cancelled turn may leave an
@@ -1225,7 +1448,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let msg = serde_json::json!({"User":{"content":"帮我写个函数","images":[]}});
         std::fs::write(dir.join("messages.jsonl"), format!("{}\n", msg)).unwrap();
-        assert_eq!(extract_session_title(&dir), "帮我写个函数");
+        assert_eq!(extract_session_title(&dir, tmp.path()), "帮我写个函数");
     }
 
     #[test]
@@ -1236,7 +1459,7 @@ mod tests {
         let long_msg = "a".repeat(100);
         let msg = serde_json::json!({"User":{"content":long_msg,"images":[]}});
         std::fs::write(dir.join("messages.jsonl"), format!("{}\n", msg)).unwrap();
-        let title = extract_session_title(&dir);
+        let title = extract_session_title(&dir, tmp.path());
         assert!(title.ends_with("..."), "expected truncation, got: {}", title);
     }
 
@@ -1249,13 +1472,13 @@ mod tests {
         std::fs::write(dir.join("messages.jsonl"), format!("{}\n", sys)).unwrap();
         let turn = serde_json::json!({"turn":1,"timestamp":"2026-09-10T10:00:00Z","user_input":"from turn log"});
         std::fs::write(dir.join("turn_001.jsonl"), format!("{}\n", turn)).unwrap();
-        assert_eq!(extract_session_title(&dir), "from turn log");
+        assert_eq!(extract_session_title(&dir, tmp.path()), "from turn log");
     }
 
     #[test]
     fn extract_title_empty_when_nothing() {
         let tmp = TempDir::new().unwrap();
-        assert_eq!(extract_session_title(tmp.path()), "");
+        assert_eq!(extract_session_title(tmp.path(), tmp.path()), "");
     }
 
     // ── list_sessions tests ──
@@ -1283,6 +1506,191 @@ mod tests {
         let msg = serde_json::json!({"User":{"content":"hello","images":[]}});
         std::fs::write(dir.join("messages.jsonl"), format!("{}\n", msg)).unwrap();
         assert_eq!(list_sessions(tmp.path(), Some("cur")).len(), 0);
+    }
+
+    /// A context rotation used to delete `messages.jsonl` after archiving, so
+    /// a session that rotated and then died had history on disk but was
+    /// listed nowhere. Evidence beyond `messages.jsonl` has to count.
+    #[test]
+    fn list_sessions_includes_history_archive_only_sessions() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("sessions").join("arch");
+        std::fs::create_dir_all(&dir).unwrap();
+        // No messages.jsonl, no turn logs — only the archive.
+        let windows = tmp.path().join("history").join("arch").join("windows");
+        std::fs::create_dir_all(&windows).unwrap();
+        let rec = serde_json::json!({"window":1,"index":0,"role":"user","content":"archived opener","ts":"t"});
+        std::fs::write(windows.join("001.jsonl"), format!("{}\n", rec)).unwrap();
+
+        let entries = list_sessions(tmp.path(), None);
+        assert_eq!(entries.len(), 1, "archive-only session must be resumable");
+        assert_eq!(entries[0].session_id, "arch");
+        assert_eq!(entries[0].title, "archived opener");
+    }
+
+    #[test]
+    fn list_sessions_includes_turn_log_only_sessions() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("sessions").join("turns");
+        std::fs::create_dir_all(&dir).unwrap();
+        let turn = serde_json::json!({"turn":1,"timestamp":"t","user_input":"started but never finished"});
+        std::fs::write(dir.join("turn_001.jsonl"), format!("{}\n", turn)).unwrap();
+
+        let entries = list_sessions(tmp.path(), None);
+        assert_eq!(entries.len(), 1, "turn-log-only session must be resumable");
+        assert_eq!(entries[0].title, "started but never finished");
+    }
+
+    #[test]
+    fn list_sessions_still_skips_sessions_with_no_evidence() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::create_dir_all(tmp.path().join("sessions").join("empty")).unwrap();
+        assert_eq!(list_sessions(tmp.path(), None).len(), 0);
+    }
+
+    // ── workspace (home directory) recording ──
+
+    #[test]
+    fn new_session_records_its_birthplace_workspace() {
+        let tmp = TempDir::new().unwrap();
+        let (dir, is_new) = get_or_create_session_dir("born-here", tmp.path()).unwrap();
+        assert!(is_new);
+
+        let expected = std::fs::canonicalize(std::env::current_dir().unwrap()).unwrap();
+        assert_eq!(read_session_cwd(&dir), Some(expected));
+    }
+
+    /// The birthplace is written once. Resuming a session from another
+    /// directory must not migrate it into that directory's list.
+    #[test]
+    fn reuse_never_overwrites_the_workspace() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("sessions").join("already-home");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("session_meta.json"), r#"{"cwd":"/original/place"}"#).unwrap();
+
+        let (dir, is_new) = get_or_create_session_dir("already-home", tmp.path()).unwrap();
+        assert!(!is_new);
+        assert_eq!(read_session_cwd(&dir), Some(PathBuf::from("/original/place")));
+    }
+
+    /// Sessions that predate the field keep no workspace rather than being
+    /// backfilled from wherever they happen to be reopened.
+    #[test]
+    fn legacy_session_stays_untagged() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("sessions").join("legacy");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("session_meta.json"), r#"{"session_id":"legacy"}"#).unwrap();
+
+        let (dir, _) = get_or_create_session_dir("legacy", tmp.path()).unwrap();
+        assert_eq!(read_session_cwd(&dir), None);
+    }
+
+    /// A birthplace recorded at creation is labelled as such, so a later
+    /// recovery pass can never be confused with the real thing.
+    #[test]
+    fn a_birthplace_recorded_at_creation_says_so() {
+        let tmp = TempDir::new().unwrap();
+        let (dir, _) = get_or_create_session_dir("born-here", tmp.path()).unwrap();
+        assert_eq!(read_session_cwd_source(&dir), Some(CwdSource::Recorded));
+    }
+
+    #[test]
+    fn a_recovered_birthplace_is_distinguishable() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("sessions").join("recovered");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("session_meta.json"), r#"{"session_id":"recovered"}"#).unwrap();
+
+        write_session_cwd(&dir, Some(Path::new("/inferred/home")), CwdSource::Recovered);
+        assert_eq!(read_session_cwd(&dir), Some(PathBuf::from("/inferred/home")));
+        assert_eq!(read_session_cwd_source(&dir), Some(CwdSource::Recovered));
+    }
+
+    /// Declining to guess is recorded too — otherwise every launch would
+    /// re-read every session that has no defensible home.
+    #[test]
+    fn an_unrecoverable_session_is_marked_not_retried() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("sessions").join("hopeless");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("session_meta.json"), r#"{"session_id":"hopeless"}"#).unwrap();
+
+        write_session_cwd(&dir, None, CwdSource::Unrecoverable);
+        assert_eq!(read_session_cwd(&dir), None);
+        assert_eq!(read_session_cwd_source(&dir), Some(CwdSource::Unrecoverable));
+    }
+
+    #[test]
+    fn list_sessions_exposes_the_workspace() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("sessions").join("tagged");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("session_meta.json"), r#"{"session_id":"tagged","cwd":"/work/repo"}"#).unwrap();
+        let msg = serde_json::json!({"User":{"content":"hello","images":[]}});
+        std::fs::write(dir.join("messages.jsonl"), format!("{}\n", msg)).unwrap();
+
+        let entries = list_sessions(tmp.path(), None);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].cwd, Some(PathBuf::from("/work/repo")));
+    }
+
+    #[test]
+    fn extract_title_falls_back_to_history_archive() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("sessions").join("arch");
+        std::fs::create_dir_all(&dir).unwrap();
+        let windows = tmp.path().join("history").join("arch").join("windows");
+        std::fs::create_dir_all(&windows).unwrap();
+        let rec = serde_json::json!({"window":1,"index":0,"role":"user","content":"from the archive","ts":"t"});
+        std::fs::write(windows.join("001.jsonl"), format!("{}\n", rec)).unwrap();
+        assert_eq!(extract_session_title(&dir, tmp.path()), "from the archive");
+    }
+
+    /// A recovered transcript can carry tool results whose originating
+    /// `tool_calls` did not survive. `validate_message_sequence` rejects an
+    /// unanswered Tool outright, so without dropping them the sessions that
+    /// most need recovering fail to resume at all.
+    #[test]
+    fn load_drops_orphan_tool_results() {
+        let tmp = TempDir::new().unwrap();
+        let orphan = ChatMessage::Tool {
+            tool_call_id: "never-issued".into(),
+            name: Some("shell".into()),
+            content: "output with no caller".into(),
+        };
+        let paired = (
+            ChatMessage::Assistant {
+                content: None,
+                reasoning_content: None,
+                thinking_signature: None,
+                tool_calls: Some(vec![agent_base::llm_trait::ToolCallMessage {
+                    id: "tc_ok".into(),
+                    name: "shell".into(),
+                    arguments: "{}".into(),
+                }]),
+            },
+            ChatMessage::Tool {
+                tool_call_id: "tc_ok".into(),
+                name: Some("shell".into()),
+                content: "real output".into(),
+            },
+        );
+        let msgs = vec![ChatMessage::user("do the thing"), orphan, paired.0, paired.1];
+        persist_window_messages(tmp.path(), &msgs).unwrap();
+
+        let loaded = load_session_messages(tmp.path()).unwrap();
+        assert!(
+            !loaded
+                .iter()
+                .any(|m| matches!(m, ChatMessage::Tool { tool_call_id, .. } if tool_call_id == "never-issued")),
+            "orphan tool result must be dropped, got: {loaded:?}"
+        );
+        assert!(
+            loaded.iter().any(|m| matches!(m, ChatMessage::Tool { tool_call_id, .. } if tool_call_id == "tc_ok")),
+            "paired tool result must be kept, got: {loaded:?}"
+        );
     }
 }
 

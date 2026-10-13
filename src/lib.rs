@@ -130,9 +130,10 @@ pub use render::{
     EventRenderer, JsonStreamRenderer, NullRenderer, OutputFormat, create_renderer, create_stdout_renderer,
 };
 pub use session::{
-    SessionContext, SessionInfo, SnapshotInfo, cleanup_expired_sessions, clear_messages_jsonl, create_snapshot,
-    delete_snapshot, list_sessions, list_snapshots, load_session_messages, persist_window_messages, read_session_title,
-    resolve_session, restore_snapshot, validate_session_id, validate_snapshot_name, write_session_title,
+    CwdSource, SessionContext, SessionInfo, SnapshotInfo, cleanup_expired_sessions, clear_messages_jsonl,
+    create_snapshot, delete_snapshot, list_sessions, list_snapshots, load_session_messages, persist_window_messages,
+    read_session_cwd, read_session_cwd_source, read_session_title, resolve_session, restore_snapshot,
+    validate_session_id, validate_snapshot_name, write_session_cwd, write_session_title,
 };
 
 /// Format a number with K/M suffixes for display.
