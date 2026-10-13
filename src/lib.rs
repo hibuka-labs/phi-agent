@@ -115,8 +115,9 @@ pub use agent_works::mcp::{McpServeConfig, McpServer, McpServerConfig, McpServer
 #[cfg(feature = "compression")]
 pub use agent::CompressionMiddleware;
 pub use agent::{
-    PhiAgent, PhiAgentConfig, base_agent_builder, base_agent_builder_no_compression, base_agent_builder_with_excludes,
-    base_agent_builder_with_options, clear_compression_cache, run_compact_session,
+    FileToolOptions, PhiAgent, PhiAgentConfig, base_agent_builder, base_agent_builder_no_compression,
+    base_agent_builder_with_excludes, base_agent_builder_with_file_options, base_agent_builder_with_options,
+    clear_compression_cache, run_compact_session,
 };
 pub use agent_works::prompt::{
     DynamicToolsFragment, EnvironmentFragment, FragmentContext, PromptFragment, compose_fragments,

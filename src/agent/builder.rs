@@ -4,7 +4,6 @@
 //! Returns a pre-configured [`agent_works::AgentBuilder`]; callers then register
 //! tools and approval handlers on top.
 
-#[cfg(any(feature = "file", feature = "skill"))]
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -110,6 +109,22 @@ pub fn base_agent_builder(llm_client: Arc<dyn agent_base::llm_trait::LlmProvider
     base_agent_builder_with_excludes(llm_client, Vec::new())
 }
 
+/// Options for the four file tools (Read/Write/Edit/ListFiles) registered by
+/// the base builder. Defaults reproduce the historical behavior exactly:
+/// root = process cwd, no excludes, no path confinement.
+#[derive(Debug, Clone, Default)]
+pub struct FileToolOptions {
+    /// Root directory the file tools resolve paths against.
+    /// `None` = process cwd (historical behavior).
+    pub root: Option<PathBuf>,
+    /// Entry names [`phi_kernel_tools::file::ListFilesTool`] skips.
+    pub excludes: Vec<String>,
+    /// Reject `..`/absolute-path escapes from `root` (kernel-tools opt-in
+    /// confinement). Off by default — phimint and other consumers relying on
+    /// the approval-layer contract are unchanged.
+    pub confinement: bool,
+}
+
 /// Like [`base_agent_builder`], but lets the consumer inject a list of entry
 /// names for [`phi_kernel_tools::file::ListFilesTool`] to skip (e.g. a coding agent passing
 /// `["target", "node_modules"]`). The framework stays domain-agnostic: it
@@ -122,6 +137,17 @@ pub fn base_agent_builder_with_excludes(
     base_agent_builder_with_options(llm_client, file_excludes, None)
 }
 
+/// Like [`base_agent_builder`], but with full control over the file tools:
+/// a custom root directory (`file_root` knob), ListFiles excludes, and the
+/// kernel-tools opt-in path confinement.
+#[allow(unused_mut)]
+pub fn base_agent_builder_with_file_options(
+    llm_client: Arc<dyn agent_base::llm_trait::LlmProvider>,
+    file_options: FileToolOptions,
+) -> agent_works::AgentBuilder {
+    base_agent_builder_with_file_options_inner(llm_client, file_options, None, false)
+}
+
 /// Like [`base_agent_builder_with_excludes`], but also lets the consumer
 /// override the [`CompressionConfig`] used by the context-compression
 /// middleware.  Pass `None` to use the defaults.
@@ -131,7 +157,12 @@ pub fn base_agent_builder_with_options(
     file_excludes: Vec<String>,
     compression_config: Option<CompressionConfig>,
 ) -> agent_works::AgentBuilder {
-    base_agent_builder_with_options_inner(llm_client, file_excludes, compression_config, false)
+    base_agent_builder_with_file_options_inner(
+        llm_client,
+        FileToolOptions { excludes: file_excludes, ..Default::default() },
+        compression_config,
+        false,
+    )
 }
 
 /// Like [`base_agent_builder_with_options`], but skips registering the
@@ -142,13 +173,18 @@ pub fn base_agent_builder_no_compression(
     llm_client: Arc<dyn agent_base::llm_trait::LlmProvider>,
     file_excludes: Vec<String>,
 ) -> agent_works::AgentBuilder {
-    base_agent_builder_with_options_inner(llm_client, file_excludes, None, true)
+    base_agent_builder_with_file_options_inner(
+        llm_client,
+        FileToolOptions { excludes: file_excludes, ..Default::default() },
+        None,
+        true,
+    )
 }
 
 #[allow(unused_mut)]
-fn base_agent_builder_with_options_inner(
+fn base_agent_builder_with_file_options_inner(
     llm_client: Arc<dyn agent_base::llm_trait::LlmProvider>,
-    file_excludes: Vec<String>,
+    file_options: FileToolOptions,
     compression_config: Option<CompressionConfig>,
     skip_compression: bool,
 ) -> agent_works::AgentBuilder {
@@ -172,7 +208,8 @@ fn base_agent_builder_with_options_inner(
     };
 
     #[cfg(feature = "file")]
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let cwd =
+        file_options.root.clone().unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     let mut builder = agent_works::AgentBuilder::new(llm_client.clone())
         .language(Language::En)
@@ -211,11 +248,23 @@ fn base_agent_builder_with_options_inner(
     #[cfg(feature = "file")]
     {
         use phi_kernel_tools::file::{EditFileTool, ListFilesTool, ReadFileTool, WriteFileTool};
-        builder = builder
-            .register_tool_arc(Arc::new(ReadFileTool::new(cwd.clone())))
-            .register_tool_arc(Arc::new(WriteFileTool::new(cwd.clone())))
-            .register_tool_arc(Arc::new(EditFileTool::new(cwd.clone())))
-            .register_tool_arc(Arc::new(ListFilesTool::with_excludes(cwd.clone(), file_excludes)));
+        let read_tool = ReadFileTool::new(cwd.clone());
+        let write_tool = WriteFileTool::new(cwd.clone());
+        let edit_tool = EditFileTool::new(cwd.clone());
+        let list_tool = ListFilesTool::with_excludes(cwd.clone(), file_options.excludes.clone());
+        if file_options.confinement {
+            builder = builder
+                .register_tool_arc(Arc::new(read_tool.with_confinement()))
+                .register_tool_arc(Arc::new(write_tool.with_confinement()))
+                .register_tool_arc(Arc::new(edit_tool.with_confinement()))
+                .register_tool_arc(Arc::new(list_tool.with_confinement()));
+        } else {
+            builder = builder
+                .register_tool_arc(Arc::new(read_tool))
+                .register_tool_arc(Arc::new(write_tool))
+                .register_tool_arc(Arc::new(edit_tool))
+                .register_tool_arc(Arc::new(list_tool));
+        }
     }
 
     // ── Plan checklist (display-only progress tracking) ──

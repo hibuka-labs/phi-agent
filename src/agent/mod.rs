@@ -13,7 +13,8 @@ pub mod factory;
 #[cfg(feature = "compression")]
 pub use agent_works::compression::CompressionMiddleware;
 pub use builder::{
-    base_agent_builder, base_agent_builder_no_compression, base_agent_builder_with_excludes,
-    base_agent_builder_with_options, clear_compression_cache, run_compact_session,
+    FileToolOptions, base_agent_builder, base_agent_builder_no_compression, base_agent_builder_with_excludes,
+    base_agent_builder_with_file_options, base_agent_builder_with_options, clear_compression_cache,
+    run_compact_session,
 };
 pub use factory::{PhiAgent, PhiAgentConfig};
