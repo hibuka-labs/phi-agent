@@ -34,6 +34,7 @@ async fn main() -> anyhow::Result<()> {
         transport: McpTransport::Stdio {
             command: "echo".into(), // replace with your MCP server binary
             args: vec![],
+            env: Default::default(),
         },
         auto_reconnect: false,
     };
@@ -70,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
             transport: phi_agent::McpTransport::Stdio {
                 command: "echo".into(), // replace with your MCP server binary
                 args: vec![],
+                env: Default::default(),
             },
             auto_reconnect: false,
         })

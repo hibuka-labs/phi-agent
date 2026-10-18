@@ -109,7 +109,35 @@ pub use agent_works::skill::{
 
 // ── MCP (feature-gated) ──
 #[cfg(feature = "mcp")]
-pub use agent_works::mcp::{McpServeConfig, McpServer, McpServerConfig, McpServerTransport, McpTransport};
+pub use agent_works::mcp::{
+    McpClient, McpServeConfig, McpServer, McpServerConfig, McpServerTransport, McpToolAdapter, McpToolInfo,
+    McpTransport,
+};
+
+// ── Tool socket (P1: approval ledger, ${ENV:} resolution, script tools) ──
+// Identity-key contract / ToolProvider / approval ledger / `${ENV:}` resolution / script-tool adapter.
+// The product layer (phimint) gets these through the facade — no direct dependency on agent-works.
+// Note: the ledger's `ApprovalMode` collides in name with `cli::ApprovalMode` — go through the module path
+// `approval_ledger::ApprovalMode`.
+pub use agent_works::approval_ledger::{
+    ApprovalLedger, ApprovalTier, ExternalGate, engine_decision_for_external, gate_decision, is_external_identity_key,
+};
+pub use agent_works::env_ref::{EnvRefError, resolve_env_map, resolve_env_refs, system_env};
+pub use agent_works::script_tool::{
+    ScriptLawError, ScriptProvider, ScriptTool, ScriptToolEntry, check_run_law, pin_from_plugin_root, substitute_params,
+};
+pub use agent_works::tool_provider::{
+    IdentityError, ToolDescriptor, ToolIdentity, ToolProvider, normalize_tool_segment,
+};
+pub use agent_works::{approval_ledger, env_ref, script_tool, tool_provider};
+
+// ── Tool socket (P2: plugin packages) ──
+// Manifest / registry integrity pinning / `plugin add|remove` lifecycle / loading.
+// Get types via the module path (`plugin::…`) to avoid name clashes with product-layer vocabulary. The wasm
+// loader lives behind the `plugin-wasm` feature (wasmtime is heavy; not pulled in by default).
+pub use agent_works::plugin;
+#[cfg(feature = "plugin-wasm")]
+pub use agent_works::plugin::wasm;
 
 // ── phi-agent types ──
 #[cfg(feature = "compression")]

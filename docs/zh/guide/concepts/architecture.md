@@ -143,19 +143,21 @@ graph TB
 | `telemetry` | 指标采集 | 开启 |
 | `logging` | 结构化日志 | 开启 |
 | `browser` | 浏览器自动化（21 个 CDP 工具） | 关闭 |
+| `plugin` | 插件包（清单 / 完整性 registry / 安装生命周期） | 关闭 |
+| `plugin-wasm` | wasm 插件装载（wasmtime；含 `plugin`） | 关闭 |
 | `full` | 全部功能（不含 browser） | — |
 
 ### 组合示例
 
 ```toml
 # 轻量：只要文件工具 + MCP
-phi-agent = { version = "0.18", default-features = false, features = ["file", "mcp"] }
+phi-agent = { version = "0.19", default-features = false, features = ["file", "mcp"] }
 
 # 标准：默认配置（文件 + MCP + focus + 压缩 + 遥测 + 日志）
-phi-agent = { version = "0.18" }
+phi-agent = { version = "0.19" }
 
 # 全量：全部功能（不含 browser）
-phi-agent = { version = "0.18", features = ["full"] }
+phi-agent = { version = "0.19", features = ["full"] }
 ```
 
 ### 可观测性

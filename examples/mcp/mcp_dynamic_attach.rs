@@ -48,6 +48,7 @@ async fn main() -> anyhow::Result<()> {
         transport: PhiMcpTransport::Stdio {
             command: "your-mcp-server".into(), // replace with your MCP server
             args: vec![],
+            env: Default::default(),
         },
         auto_reconnect: false,
     };
@@ -76,7 +77,11 @@ async fn main() -> anyhow::Result<()> {
     // ── 5. Error handling: attach_mcp with invalid config ──
     let bad_config = PhiMcpConfig {
         name: "bad-server".into(),
-        transport: PhiMcpTransport::Stdio { command: "/nonexistent/binary".into(), args: vec![] },
+        transport: PhiMcpTransport::Stdio {
+            command: "/nonexistent/binary".into(),
+            args: vec![],
+            env: Default::default(),
+        },
         auto_reconnect: false,
     };
 

@@ -1,6 +1,6 @@
 [package]
 name = "phi-agent"
-version = "0.18.1"
+version = "0.19.0"
 edition = "2024"
 description = "phi-agent — Rust AI Agent runtime framework: orchestration, sessions, streaming built-in. You define tools, prompts, domain knowledge."
 license = "MIT"
@@ -15,10 +15,10 @@ path = "src/bin/phi/main.rs"
 required-features = ["mcp", "telemetry", "logging"]
 
 [dependencies]
-agent-base = { version = "0.9.0" }
-agent-works = { version = "0.10.0" }
+agent-base = { version = "0.10.0" }
+agent-works = { version = "0.11.0" }
 llm-unified = { version = "0.1.4" }
-phi-kernel-tools = { version = "0.9.1", default-features = false }
+phi-kernel-tools = { version = "0.10.0", default-features = false }
 phi-tools = { version = "0.6.0", optional = true }
 phi-telemetry = { version = "0.7.1", optional = true }
 log-core = { version = "0.1.4", optional = true }
@@ -59,6 +59,10 @@ mcp = ["agent-works/mcp"]
 focus = ["agent-works/focus"]
 compression = ["agent-works/compression"]
 memory = ["agent-works/memory"]
+# 插件包机制（P2）：清单 / registry 完整性 / 安装生命周期 / 装载。模块本体
+# 无 feature 门槛；wasm 形态加载器另开 `plugin-wasm`（wasmtime 体积大）。
+plugin = []
+plugin-wasm = ["plugin", "agent-works/wasm"]
 browser = ["phi-tools", "phi-tools/browser"]
 telemetry = ["phi-telemetry"]
 logging = ["log-core"]
@@ -189,5 +193,4 @@ required-features = ["shell"]
 [[test]]
 name = "bridge_messages"
 path = "tests/stress/bridge_messages.rs"
-
 

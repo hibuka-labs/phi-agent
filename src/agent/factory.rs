@@ -444,6 +444,19 @@ impl PhiAgent {
             },
         };
 
+        // `discover_all` only warns + records Failed on a single server's discovery
+        // failure (partial-success semantics across multiple servers) — but attach is
+        // about this one server: silent success is a lie. HTTP is a lazy handshake
+        // (`connect_one` always succeeds; the real cause only surfaces at tools/list),
+        // so the real cause must be reported here and the change rolled back. `reason`
+        // already carries the AgentError prefix — strip it before wrapping once more,
+        // so we don't get `Internal error: Internal error:`.
+        if let Some(agent_works::mcp::ConnectionState::Failed(reason)) = hub.get_connection_state(&name).await {
+            hub.remove_server(&name).await;
+            let reason = reason.strip_prefix("Internal error: ").unwrap_or(&reason);
+            return Err(AgentError::internal(reason));
+        }
+
         // Register only the newly attached server's tools
         let tools = self.runtime.tools_mut();
         let mut registry = tools.write().await;
@@ -697,11 +710,38 @@ mod tests {
             transport: agent_works::mcp::McpTransport::Stdio {
                 command: "definitely-not-a-real-command-xyz".to_string(),
                 args: vec![],
+                env: Default::default(),
             },
             auto_reconnect: false,
         };
         // Spawn failure → attach fails and rolls the server back.
         assert!(agent.attach_mcp(config).await.is_err());
+    }
+
+    #[cfg(feature = "mcp")]
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_attach_mcp_discovery_failure_reports_error_and_rolls_back() {
+        let agent = build_agent();
+        // HTTP is a lazy handshake: `McpClient::new` does not probe, `connect_one`
+        // always succeeds, and the real cause only surfaces at tools/list — attach
+        // must not swallow it into a silent success with 0 tools (the production path
+        // when the Taobao bridge died).
+        let config = agent_works::mcp::McpServerConfig {
+            name: "dead".to_string(),
+            transport: agent_works::mcp::McpTransport::Http {
+                url: "http://127.0.0.1:1/mcp".to_string(),
+                headers: Default::default(),
+            },
+            auto_reconnect: false,
+        };
+        let err = agent.attach_mcp(config).await.expect_err("dead server must fail attach, not attach with 0 tools");
+        let msg = err.to_string();
+        assert!(msg.contains("127.0.0.1:1"), "{msg}");
+        // `reason` already carries the AgentError prefix — strip it before wrapping; no double layer.
+        assert!(!msg.contains("Internal error: Internal error"), "{msg}");
+        // Rollback: no dead.* tools left in the tool table.
+        let tools = agent.list_tools().await;
+        assert!(!tools.iter().any(|t| t.name.starts_with("dead.")), "rolled-back server must not leave tools behind");
     }
 
     #[cfg(feature = "mcp")]

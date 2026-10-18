@@ -7,8 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-10-18
+
 ### Added
+- **`plugin` / `plugin-wasm` feature flags** — plugin-pack plumbing (manifest,
+  integrity registry, install/remove lifecycle); wasmtime-backed loading is
+  behind `plugin-wasm`.
+- **Sessions persist their home workspace** (cwd + provenance) and restore it
+  on resume.
+- **`FileToolOptions`** on the agent builder configures the base file tools
+  (e.g. opt-in path confinement).
 - Add coverage for the LLM configuration resolution priority chain.
+
+### Fixed
+- `attach_mcp` no longer swallows a discovery failure into a silent 0-tool
+  success: the real cause is surfaced and the change rolled back (an HTTP lazy
+  handshake made `connect_one` always succeed while `tools/list` failed).
 
 ## [0.18.1] - 2026-10-11
 
