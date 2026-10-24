@@ -70,6 +70,13 @@ phi-agent 重导出了 [`agent-works`](https://docs.rs/agent-works) 的关键类
 | **注册表** | `AgentSnapshot`、`RegistrySnapshot`（`multi-agent` feature） |
 | **Skills** | `Skill`、`PromptSkill`（`skill` feature） |
 
+### 守卫：停在人机交互的运行
+
+当最新一批工具停在人机交互步（例如设计画布的屏幕等待用户点选）时，
+`GuardCtx.awaiting_human` 置位，`DefaultGuard` 会直接结束本轮而不咨询完成度判官：
+此时是*在等用户*而非任务未完成，用户的点选就是下一条输入。退化轮次
+（纯思考等）在点选待答时仍然照常判失败。
+
 ## llm-unified 重导出
 
 | 函数 | 描述 |

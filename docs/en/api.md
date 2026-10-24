@@ -70,6 +70,15 @@ phi-agent re-exports key types from [`agent-works`](https://docs.rs/agent-works)
 | **Registry** | `AgentSnapshot`, `RegistrySnapshot` (behind `multi-agent`) |
 | **Skills** | `Skill`, `PromptSkill` (behind `skill`) |
 
+### Guard: a run parked on a human step
+
+When the latest tool batch parks on a human step — a design-canvas screen
+awaiting a pick, for example — `GuardCtx.awaiting_human` is set and
+`DefaultGuard` finishes the run without consulting the completion judge:
+the run is *waiting for the user*, not an incomplete task, and their pick
+is the next input. Degenerate turns (reasoning-only etc.) still fail while
+a pick is pending.
+
 ## Re-exports from llm-unified
 
 | Function | Description |

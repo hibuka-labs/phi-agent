@@ -19,9 +19,9 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "agent-base"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0268793c807e5c372431b2f22fc0432768a1eb71746c13f58b0a5d63cfcf9a5d"
+checksum = "ce6daeba3291427426b3e73ed190fd48786667621870b7b5c9200088e0edd097"
 dependencies = [
  "agent-types",
  "anyhow",
@@ -46,9 +46,9 @@ dependencies = [
 
 [[package]]
 name = "agent-types"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c74182e96d19f6ccdd9c6a1298ee55002c4449eb56b4d67838a4f62d2d41df53"
+checksum = "0a1f3f84a55a947beb9f58f4fb8b5086a231e62bed672a414ea872f62bcc2afa"
 dependencies = [
  "llm-trait",
  "serde",
@@ -57,9 +57,9 @@ dependencies = [
 
 [[package]]
 name = "agent-works"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f394b4e67807f789165d6021784817d67b7a1ec26d5a7ad9f7bffff4dedadd03"
+checksum = "84e8b568b4bcfb2e6b6dc716b36203be30729cf701426cafa4f5881d1ddf5bf6"
 dependencies = [
  "agent-base",
  "async-trait",
@@ -2332,7 +2332,7 @@ dependencies = [
 
 [[package]]
 name = "phi-agent"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -2368,9 +2368,9 @@ dependencies = [
 
 [[package]]
 name = "phi-kernel-tools"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5a6a5fad9ea9949f22928d9bdae85dfc7ae882e4d43d8e0b52e1a53b7caefa8"
+checksum = "3254a417ffc432be01299eee8c6adc7b42ad19e1f9bc9aab98349928a2652a97"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -2389,9 +2389,9 @@ dependencies = [
 
 [[package]]
 name = "phi-telemetry"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4edf07ec9cab7392aab6a4223601031f927a32dfd8f1e38b4694094e2841ae5"
+checksum = "e83c776ee180791524194371cea4b33a8f0c226aa560dfd973dcde3f558b462e"
 dependencies = [
  "agent-base",
  "anyhow",
@@ -2404,9 +2404,9 @@ dependencies = [
 
 [[package]]
 name = "phi-tools"
-version = "0.6.2"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b00e4524e0e4f6f6be339e01fe235710be32d4b71c65f9d9e05c085f91b90340"
+checksum = "e3968a3416432e6e5e6a6407885be9c0be55a83b1bf13ea85b6b566caba6c01e"
 dependencies = [
  "agent-base",
  "anyhow",

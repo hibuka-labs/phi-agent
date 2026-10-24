@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-10-24
+
+### Changed
+- Dependency bumps to keep the family on single versions (no code changes):
+  `agent-base` 0.11.0 (per-call timeout budget, awaiting-human park),
+  `agent-works` 0.11.1 (a run parked on a human answer completes),
+  `phi-kernel-tools` 0.11.0 (`~` expansion in file tools), `phi-tools` 0.7.0
+  (lazy Chrome lifecycle), `phi-telemetry` 0.7.3.
+- Document the awaiting-human park semantics (`GuardCtx.awaiting_human`) in
+  the API reference (en/zh).
+
 ## [0.19.0] - 2026-10-18
 
 ### Added
