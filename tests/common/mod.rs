@@ -107,8 +107,8 @@ pub fn event_type(event: &phi_agent::RuntimeEvent) -> &'static str {
     match event {
         phi_agent::RuntimeEvent::TextDelta { .. } => "text_delta",
         phi_agent::RuntimeEvent::ThoughtDelta { .. } => "thought_delta",
-        phi_agent::RuntimeEvent::ToolCallStarted { .. } => "tool_call_started",
-        phi_agent::RuntimeEvent::ToolCallFinished { .. } => "tool_call_finished",
+        phi_agent::RuntimeEvent::ActionStarted { .. } => "tool_call_started",
+        phi_agent::RuntimeEvent::ActionFinished { .. } => "tool_call_finished",
         phi_agent::RuntimeEvent::RunFinished { .. } => "run_finished",
         phi_agent::RuntimeEvent::RunCancelled { .. } => "run_cancelled",
         _ => "other",

@@ -135,7 +135,7 @@ impl EventRenderer for TerminalRenderer {
                     None => self.write_text(text)?,
                 }
             },
-            RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => {
+            RuntimeEvent::ActionStarted { tool_name, args_json, .. } => {
                 self.last_was_thought = false;
                 self.tool_call_count += 1;
                 let head = match &agent_prefix {
@@ -148,7 +148,7 @@ impl EventRenderer for TerminalRenderer {
                     self.write_line(&format!("\n{} {}", head, self.green(tool_name)))?;
                 }
             },
-            RuntimeEvent::ToolCallFinished { tool_name: _, summary, .. } => {
+            RuntimeEvent::ActionFinished { tool_name: _, summary, .. } => {
                 let summary_short: String = if summary.chars().count() > 500 {
                     let truncated: String = summary.chars().take(500).collect();
                     format!("{}...", truncated)
@@ -187,7 +187,7 @@ impl EventRenderer for TerminalRenderer {
             RuntimeEvent::RunFinished { .. } => {},
             // Liveness ticks for a live status line; a line-based CLI has no
             // such line, and per-bucket rewrites would only spam the output.
-            RuntimeEvent::ToolCallDraft { .. } => {},
+            RuntimeEvent::ActionDraft { .. } => {},
             RuntimeEvent::UserEvent { event: agent_base::UserEvent::Progress { text }, .. } => {
                 self.write_line(&format!("\r\x1b[K{}", self.green(text)))?;
             },
@@ -452,7 +452,7 @@ mod tests {
             true,
             true,
             true,
-            RuntimeEvent::ToolCallStarted {
+            RuntimeEvent::ActionStarted {
                 session_id: session_id(),
                 tool_name: "read_file".into(),
                 args_json: r#"{"path":"/tmp/a.txt"}"#.into(),
@@ -470,7 +470,7 @@ mod tests {
             true,
             false,
             true,
-            RuntimeEvent::ToolCallStarted {
+            RuntimeEvent::ActionStarted {
                 session_id: session_id(),
                 tool_name: "read_file".into(),
                 args_json: r#"{"path":"/tmp/a.txt"}"#.into(),
@@ -488,7 +488,7 @@ mod tests {
             true,
             true,
             true,
-            RuntimeEvent::ToolCallFinished {
+            RuntimeEvent::ActionFinished {
                 session_id: session_id(),
                 tool_name: "read_file".into(),
                 summary: "file contents here".into(),
@@ -508,7 +508,7 @@ mod tests {
             true,
             true,
             true,
-            RuntimeEvent::ToolCallFinished {
+            RuntimeEvent::ActionFinished {
                 session_id: session_id(),
                 tool_name: "read_file".into(),
                 summary: long.clone(),
@@ -810,21 +810,21 @@ mod tests {
             true,
             true,
             &[
-                RuntimeEvent::ToolCallStarted {
+                RuntimeEvent::ActionStarted {
                     session_id: session_id(),
                     tool_name: "a".into(),
                     args_json: "{}".into(),
                     agent_id: None,
                     trace_id: None,
                 },
-                RuntimeEvent::ToolCallStarted {
+                RuntimeEvent::ActionStarted {
                     session_id: session_id(),
                     tool_name: "b".into(),
                     args_json: "{}".into(),
                     agent_id: None,
                     trace_id: None,
                 },
-                RuntimeEvent::ToolCallStarted {
+                RuntimeEvent::ActionStarted {
                     session_id: session_id(),
                     tool_name: "c".into(),
                     args_json: "{}".into(),
@@ -841,7 +841,7 @@ mod tests {
         let (writer, buf) = SharedWriter::new();
         {
             let mut r = TerminalRenderer::new(true, true, true, Box::new(writer));
-            r.render(RuntimeEvent::ToolCallStarted {
+            r.render(RuntimeEvent::ActionStarted {
                 session_id: session_id(),
                 tool_name: "t1".into(),
                 args_json: "{}".into(),
@@ -914,7 +914,7 @@ mod tests {
             true,
             true,
             false,
-            RuntimeEvent::ToolCallStarted {
+            RuntimeEvent::ActionStarted {
                 session_id: session_id(),
                 tool_name: "search".into(),
                 args_json: r#"{"q":"test"}"#.into(),

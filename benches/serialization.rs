@@ -14,7 +14,7 @@ fn make_thought_event(sid: &SessionId) -> RuntimeEvent {
 }
 
 fn make_tool_start_event(sid: &SessionId) -> RuntimeEvent {
-    RuntimeEvent::ToolCallStarted {
+    RuntimeEvent::ActionStarted {
         session_id: sid.clone(),
         tool_name: "read_file".into(),
         args_json: r#"{"path":"/src/main.rs","offset":0,"limit":500}"#.into(),
@@ -24,7 +24,7 @@ fn make_tool_start_event(sid: &SessionId) -> RuntimeEvent {
 }
 
 fn make_tool_finish_event(sid: &SessionId) -> RuntimeEvent {
-    RuntimeEvent::ToolCallFinished {
+    RuntimeEvent::ActionFinished {
         session_id: sid.clone(),
         tool_name: "read_file".into(),
         summary: format!("Read {} bytes", "fn main() {}\n".repeat(20).len()),
@@ -73,14 +73,14 @@ fn bench_jsonl_bulk(c: &mut Criterion) {
                     agent_id: None,
                     trace_id: None,
                 },
-                RuntimeEvent::ToolCallStarted {
+                RuntimeEvent::ActionStarted {
                     session_id: sid.clone(),
                     tool_name: "search".into(),
                     args_json: format!(r#"{{"query":"pattern {}"}}"#, i),
                     agent_id: None,
                     trace_id: None,
                 },
-                RuntimeEvent::ToolCallFinished {
+                RuntimeEvent::ActionFinished {
                     session_id: sid.clone(),
                     tool_name: "search".into(),
                     summary: format!("Found results for query {}", i),

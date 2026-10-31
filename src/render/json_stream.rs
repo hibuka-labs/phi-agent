@@ -59,7 +59,7 @@ impl EventRenderer for JsonStreamRenderer {
                 }
                 self.emit_event(&event, json!({ "type": "text_delta", "text": text }))?;
             },
-            RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => {
+            RuntimeEvent::ActionStarted { tool_name, args_json, .. } => {
                 self.tool_call_count += 1;
                 let args: Value = serde_json::from_str(args_json).unwrap_or(Value::Null);
                 self.emit_event(
@@ -71,7 +71,7 @@ impl EventRenderer for JsonStreamRenderer {
                     }),
                 )?;
             },
-            RuntimeEvent::ToolCallFinished { tool_name, summary, denied, .. } => {
+            RuntimeEvent::ActionFinished { tool_name, summary, denied, .. } => {
                 self.emit_event(
                     &event,
                     json!({
@@ -117,7 +117,7 @@ impl EventRenderer for JsonStreamRenderer {
             RuntimeEvent::Checkpoint { .. } => {},
             // Drafts are liveness ticks for a status line; the JSON stream is
             // a line-oriented record of materialized events only.
-            RuntimeEvent::ToolCallDraft { .. } => {},
+            RuntimeEvent::ActionDraft { .. } => {},
             RuntimeEvent::RunFinished { .. } => {},
             RuntimeEvent::RunCancelled { .. } => {
                 self.emit_event(&event, json!({ "type": "run_cancelled" }))?;
@@ -226,7 +226,7 @@ mod tests {
 
     #[test]
     fn test_tool_call_started_parses_args() {
-        let lines = render_one(RuntimeEvent::ToolCallStarted {
+        let lines = render_one(RuntimeEvent::ActionStarted {
             session_id: session_id(),
             tool_name: "shell".into(),
             args_json: r#"{"cmd":"ls"}"#.into(),
@@ -241,7 +241,7 @@ mod tests {
 
     #[test]
     fn test_tool_call_finished_produces_valid_json() {
-        let lines = render_one(RuntimeEvent::ToolCallFinished {
+        let lines = render_one(RuntimeEvent::ActionFinished {
             session_id: session_id(),
             tool_name: "shell".into(),
             summary: "done".into(),
@@ -346,14 +346,14 @@ mod tests {
     #[test]
     fn test_tool_call_count_incremented() {
         let lines = render_and_finish(&[
-            RuntimeEvent::ToolCallStarted {
+            RuntimeEvent::ActionStarted {
                 session_id: session_id(),
                 tool_name: "a".into(),
                 args_json: "{}".into(),
                 agent_id: None,
                 trace_id: None,
             },
-            RuntimeEvent::ToolCallStarted {
+            RuntimeEvent::ActionStarted {
                 session_id: session_id(),
                 tool_name: "b".into(),
                 args_json: "{}".into(),
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_subagent_tool_call_includes_agent_id() {
-        let lines = render_one(RuntimeEvent::ToolCallStarted {
+        let lines = render_one(RuntimeEvent::ActionStarted {
             session_id: session_id(),
             tool_name: "shell".into(),
             args_json: r#"{"cmd":"ls"}"#.into(),

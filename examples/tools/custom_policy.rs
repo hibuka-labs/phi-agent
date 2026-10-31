@@ -199,10 +199,10 @@ impl Middleware for DemoMiddleware {
     }
 
     async fn on_post_llm(&self, ctx: &mut PostLlmCtx) -> AgentResult<()> {
-        if ctx.is_tool_call {
-            println!("  [Middleware] on_post_llm — is_tool_call=true, {} tool(s) requested", ctx.tool_calls.len(),);
+        if ctx.has_action_intent() {
+            println!("  [Middleware] on_post_llm — action intent, {} tool(s) requested", ctx.actions().len(),);
         } else {
-            println!("  [Middleware] on_post_llm — is_tool_call=false, text=\"{}\"", ctx.full_text,);
+            println!("  [Middleware] on_post_llm — text-only, text=\"{}\"", ctx.full_text,);
         }
         Ok(())
     }
@@ -235,11 +235,11 @@ async fn main() -> anyhow::Result<()> {
     runtime
         .run_turn(session_id, "echo hello from hook demo", move |event| {
             match &event {
-                RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => {
-                    println!("  [Event] ToolCallStarted   — tool=\"{tool_name}\", args={args_json}");
+                RuntimeEvent::ActionStarted { tool_name, args_json, .. } => {
+                    println!("  [Event] ActionStarted   — tool=\"{tool_name}\", args={args_json}");
                 },
-                RuntimeEvent::ToolCallFinished { tool_name, summary, .. } => {
-                    println!("  [Event] ToolCallFinished  — tool=\"{tool_name}\", summary=\"{summary}\"");
+                RuntimeEvent::ActionFinished { tool_name, summary, .. } => {
+                    println!("  [Event] ActionFinished  — tool=\"{tool_name}\", summary=\"{summary}\"");
                 },
                 RuntimeEvent::TextDelta { text, .. } => {
                     println!("  [Event] TextDelta         — \"{text}\"");
@@ -269,7 +269,7 @@ async fn main() -> anyhow::Result<()> {
     println!("ToolPolicy after_call count:  {}", policy.after_count.load(Ordering::SeqCst),);
     println!("\nHook execution order:");
     println!("  on_user_message → on_post_llm → evaluate_approval → before_call →");
-    println!("  ToolCallStarted → tool.call() → ToolCallFinished → after_call →");
+    println!("  ActionStarted → tool.call() → ActionFinished → after_call →");
     println!("  on_post_llm → TextDelta → RunFinished");
     println!("\n=== Done ===");
 

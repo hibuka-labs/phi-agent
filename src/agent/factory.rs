@@ -342,7 +342,12 @@ impl PhiAgent {
                     merged.push(sys);
                 }
                 merged.extend(messages);
-                s.set_chat_messages(merged).map_err(AgentError::config_error)
+                s.set_chat_messages(merged).map_err(AgentError::config_error)?;
+                // Messages-only restore is the old-format path (D5): rebuild
+                // the session-lifetime action total from the history lens. A
+                // checkpoint restore trusts the persisted RunState instead.
+                s.recount_actions_from_messages();
+                Ok::<(), AgentError>(())
             })
             .await??;
         Ok(session_id)

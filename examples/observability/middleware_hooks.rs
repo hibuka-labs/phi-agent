@@ -56,8 +56,8 @@ impl Middleware for LoggingMiddleware {
 
     async fn on_post_llm(&self, ctx: &mut PostLlmCtx) -> AgentResult<()> {
         println!(
-            "[middleware] on_post_llm — is_tool_call={}, text_len={}, turn={}",
-            ctx.is_tool_call,
+            "[middleware] on_post_llm — action_intent={}, text_len={}, turn={}",
+            ctx.has_action_intent(),
             ctx.full_text.len(),
             ctx.turn_count
         );
@@ -101,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
         .run_turn(session, "Say hello in exactly 5 words.", move |event| {
             // Event-level hook — fires for every RuntimeEvent
             use agent_base::RuntimeEvent;
-            if let RuntimeEvent::ToolCallStarted { tool_name, .. } = &event {
+            if let RuntimeEvent::ActionStarted { tool_name, .. } = &event {
                 println!("[callback] tool call started: {}", tool_name);
             }
             renderer_clone.lock().unwrap().render(event)

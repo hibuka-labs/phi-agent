@@ -748,7 +748,12 @@ pub fn load_session_messages(session_dir: &Path) -> io::Result<Vec<ChatMessage>>
     }
     for id in pending {
         tracing::info!(tool_call_id = %id, "patching dangling tool_call with interrupted response");
-        messages.push(ChatMessage::Tool { tool_call_id: id, name: None, content: "interrupted".to_string() });
+        messages.push(ChatMessage::Tool {
+            tool_call_id: id,
+            name: None,
+            content: "interrupted".to_string(),
+            images: Vec::new(),
+        });
     }
 
     Ok(messages)
@@ -1325,6 +1330,7 @@ mod tests {
                 tool_call_id: "tc_answered".to_string(),
                 name: Some("read_file".to_string()),
                 content: "file content".to_string(),
+                images: Vec::new(),
             },
             // tc_dangling has no response — simulates a cancelled turn.
         ];
@@ -1420,6 +1426,7 @@ mod tests {
                 tool_call_id: "tc1".to_string(),
                 name: Some("tool".to_string()),
                 content: "ok".to_string(),
+                images: Vec::new(),
             },
             ChatMessage::Assistant {
                 content: Some("second".to_string()),
@@ -1659,6 +1666,7 @@ mod tests {
             tool_call_id: "never-issued".into(),
             name: Some("shell".into()),
             content: "output with no caller".into(),
+            images: Vec::new(),
         };
         let paired = (
             ChatMessage::Assistant {
@@ -1675,6 +1683,7 @@ mod tests {
                 tool_call_id: "tc_ok".into(),
                 name: Some("shell".into()),
                 content: "real output".into(),
+                images: Vec::new(),
             },
         );
         let msgs = vec![ChatMessage::user("do the thing"), orphan, paired.0, paired.1];

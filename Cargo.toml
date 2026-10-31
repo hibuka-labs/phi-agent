@@ -1,6 +1,6 @@
 [package]
 name = "phi-agent"
-version = "0.19.1"
+version = "0.20.0"
 edition = "2024"
 description = "phi-agent — Rust AI Agent runtime framework: orchestration, sessions, streaming built-in. You define tools, prompts, domain knowledge."
 license = "MIT"
@@ -15,12 +15,12 @@ path = "src/bin/phi/main.rs"
 required-features = ["mcp", "telemetry", "logging"]
 
 [dependencies]
-agent-base = { version = "0.11.0" }
-agent-works = { version = "0.11.1" }
-llm-unified = { version = "0.1.4" }
-phi-kernel-tools = { version = "0.11.0", default-features = false }
-phi-tools = { version = "0.7.0", optional = true }
-phi-telemetry = { version = "0.7.3", optional = true }
+agent-base = { version = "0.12.0" }
+agent-works = { version = "0.12.0" }
+llm-unified = { version = "0.1.5" }
+phi-kernel-tools = { version = "0.12.0", default-features = false }
+phi-tools = { version = "0.8.0", optional = true }
+phi-telemetry = { version = "0.7.4", optional = true }
 log-core = { version = "0.1.4", optional = true }
 anyhow = "1"
 async-trait = "0.1"
@@ -43,7 +43,7 @@ rustyline = "15"
 
 [features]
 default = ["file", "mcp", "telemetry", "logging", "focus", "compression"]
-full = ["file", "skill", "shell", "mcp", "telemetry", "logging", "focus", "compression"]
+full = ["file", "skill", "shell", "mcp", "telemetry", "logging", "focus", "compression", "code-exec"]
 
 # ── Feature groups ──
 protocol      = ["mcp"]
@@ -59,6 +59,9 @@ mcp = ["agent-works/mcp"]
 focus = ["agent-works/focus"]
 compression = ["agent-works/compression"]
 memory = ["agent-works/memory"]
+# CodeAct 主路（codexec-design §11 M2）：`code_cell` 工具——一个常驻解释器
+# 装在一个 agent 工具后面。能力包/策略/审计由装配方（产品层）自选。
+code-exec = ["agent-works/code-exec"]
 # 插件包机制（P2）：清单 / registry 完整性 / 安装生命周期 / 装载。模块本体
 # 无 feature 门槛；wasm 形态加载器另开 `plugin-wasm`（wasmtime 体积大）。
 plugin = []
@@ -193,4 +196,3 @@ required-features = ["shell"]
 [[test]]
 name = "bridge_messages"
 path = "tests/stress/bridge_messages.rs"
-

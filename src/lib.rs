@@ -28,13 +28,16 @@ pub mod session;
 // because phi-agent is a full-stack framework that includes multi-agent, skills, MCP, etc.
 // For the bare runtime builder, use agent_base::AgentBuilder directly.
 pub use agent_base::{
-    AgentError, AgentResult, AgentRuntime, AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler, ApprovalRequest,
+    Action, ActionBackend, ActionExecutor, ActionFormat, ActionOutcome, AgentError, AgentResult, AgentRuntime,
+    AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler, ApprovalRequest, AskAnswer, AskOption, BatchStatus,
     ChatMessage, CheckpointData, CheckpointStep, CompactionKind, CompactionOutcome, ConsecutiveFailureRecovery,
-    Content, ContextCompaction, ContextWindowManager, DenyAllApprovalHandler, FinishReason, Language, Middleware,
-    PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx, ReasoningConfig, ReasoningEffort, RetryOnError, RiskLevel,
-    RunOutcome, RuntimeEvent, SafetyConfig, SessionId, Tool, ToolContext, ToolDecision, ToolMetadata, ToolPolicy,
-    ToolRegistry, TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
-    estimate_messages_tokens, first_system_prompt,
+    Content, ContextCompaction, ContextWindowManager, DenyAllApprovalHandler, ExecCtx, ExecError, FinishReason,
+    InteractionChannel, InteractionError, Language, LlmTurnResult, Middleware, Observation, ObservationEvent,
+    ParseError, ParseOutcome, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx, ReasoningConfig, ReasoningEffort,
+    RetryOnError, RiskLevel, RunOutcome, RunState, RuntimeEvent, SafetyConfig, SessionError, SessionHandle, SessionId,
+    SessionIdGenerator, Tool, ToolContext, ToolDecision, ToolMetadata, ToolPolicy, ToolRegistry, TurnFactMiddleware,
+    TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx, estimate_messages_tokens, first_system_prompt,
+    shared_session_ids,
 };
 // Token-budget window strategy — a pure strategy in agent-works (agent-base
 // stays strategy-free: contract + primitives only).
@@ -102,7 +105,7 @@ pub use phi_kernel_tools::local_shell::LocalShellTool;
 // ── Skills (feature-gated) ──
 #[cfg(feature = "skill")]
 pub use agent_works::skill::{
-    MAX_CATALOG_SKILLS, Skill, SkillCatalogRefreshMiddleware, SkillResolver, SkillTelemetry, SkillTool,
+    ActiveSkillSet, MAX_CATALOG_SKILLS, Skill, SkillCatalogRefreshMiddleware, SkillResolver, SkillTelemetry, SkillTool,
     catalog::demote_h2_headings, prompt_skill::PromptSkill, prompt_skill::SkillScope, refresh_catalog, render_catalog,
     strip_catalog,
 };
@@ -138,6 +141,24 @@ pub use agent_works::{approval_ledger, env_ref, script_tool, tool_provider};
 pub use agent_works::plugin;
 #[cfg(feature = "plugin-wasm")]
 pub use agent_works::plugin::wasm;
+
+// ── CodeAct main road (codexec-design §11 M2: `code_cell`) ──
+// One resident interpreter behind one agent tool. Assembly — policy, journal,
+// capability packs — is the product layer's call (sdk-assembly §3.4); get the
+// vocabulary via the module path (`code_cell::…`), only the tool type is flat.
+#[cfg(feature = "code-exec")]
+pub use agent_works::code_cell;
+#[cfg(feature = "code-exec")]
+pub use agent_works::code_cell::CodeCellTool;
+
+// ── CodeAct action backend (M3 T10: `code_act`) ──
+// The ActionBackend adapter over the same engine (shape-A history rendering):
+// mount it via `AgentBuilder::action_backend`, and wire the product's
+// interaction surface via `AgentBuilder::interaction`.
+#[cfg(feature = "code-exec")]
+pub use agent_works::code_act;
+#[cfg(feature = "code-exec")]
+pub use agent_works::code_act::{CodeActExecutor, ExecCtxBridge};
 
 // ── phi-agent types ──
 #[cfg(feature = "compression")]

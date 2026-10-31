@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Documentation site availability** — `docs.phiagent.dev` was unreachable from
+  mainland China after its GitHub Pages certificate expired on 2026-10-26 and
+  the OSS custom-domain certificate behind it expired the same day. The site is
+  back on GitHub Pages with a valid certificate (Let's Encrypt, expires
+  2027-01-02) and measured at 100% request success from Chinese resolvers
+  (previously ~70%). See `deploy/` for the certificate-watch and site-availability
+  monitors.
+
 ## [0.19.1] - 2026-10-24
 
 ### Changed

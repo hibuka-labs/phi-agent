@@ -193,7 +193,7 @@ mod tests {
             .is_ok()
         );
         assert!(
-            r.render(RuntimeEvent::ToolCallStarted {
+            r.render(RuntimeEvent::ActionStarted {
                 session_id: sid.clone(),
                 tool_name: "test_tool".into(),
                 args_json: "{}".into(),
@@ -203,7 +203,7 @@ mod tests {
             .is_ok()
         );
         assert!(
-            r.render(RuntimeEvent::ToolCallFinished {
+            r.render(RuntimeEvent::ActionFinished {
                 session_id: sid.clone(),
                 tool_name: "test_tool".into(),
                 summary: "done".into(),

@@ -49,12 +49,12 @@ impl EventRenderer for HtmlRenderer {
             RuntimeEvent::TextDelta { text, .. } => {
                 format!("<p>{}</p>\n", escape_html(text))
             },
-            RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => format!(
+            RuntimeEvent::ActionStarted { tool_name, args_json, .. } => format!(
                 "<details><summary>Tool: {}</summary><pre>{}</pre></details>\n",
                 escape_html(tool_name),
                 escape_html(args_json),
             ),
-            RuntimeEvent::ToolCallFinished { summary, .. } => {
+            RuntimeEvent::ActionFinished { summary, .. } => {
                 format!("<p class=\"tool-result\">{}</p>\n", escape_html(summary))
             },
             RuntimeEvent::AwaitingApproval { request, .. } => format!(

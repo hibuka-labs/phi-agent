@@ -27,14 +27,14 @@ fn main() -> anyhow::Result<()> {
             agent_id: None,
             trace_id: None,
         },
-        phi_agent::RuntimeEvent::ToolCallStarted {
+        phi_agent::RuntimeEvent::ActionStarted {
             session_id: session_id.clone(),
             tool_name: "shell".into(),
             args_json: r#"{"cmd":"ls"}"#.into(),
             agent_id: None,
             trace_id: None,
         },
-        phi_agent::RuntimeEvent::ToolCallFinished {
+        phi_agent::RuntimeEvent::ActionFinished {
             session_id: session_id.clone(),
             tool_name: "shell".into(),
             summary: "Listed 3 files".into(),

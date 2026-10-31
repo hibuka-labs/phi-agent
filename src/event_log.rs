@@ -54,16 +54,16 @@ pub fn event_to_value(event: &RuntimeEvent) -> serde_json::Value {
         RuntimeEvent::TextDelta { text, .. } => {
             serde_json::json!({"type": "text_delta", "text": text})
         },
-        RuntimeEvent::ToolCallDraft { name, args_len, count, .. } => {
+        RuntimeEvent::ActionDraft { name, args_len, count, .. } => {
             // Progress on a call still being streamed in — recorded (not
             // rendered) so the turn log can explain a silent window.
             serde_json::json!({"type": "tool_call_draft", "tool": name, "args_len": args_len, "count": count})
         },
-        RuntimeEvent::ToolCallStarted { tool_name, args_json, .. } => {
+        RuntimeEvent::ActionStarted { tool_name, args_json, .. } => {
             let args: serde_json::Value = serde_json::from_str(args_json).unwrap_or(serde_json::Value::Null);
             serde_json::json!({"type": "tool_call_started", "tool": tool_name, "args": args})
         },
-        RuntimeEvent::ToolCallFinished { tool_name, summary, denied, .. } => {
+        RuntimeEvent::ActionFinished { tool_name, summary, denied, .. } => {
             serde_json::json!({"type": "tool_call_finished", "tool": tool_name, "summary": summary, "denied": denied})
         },
         RuntimeEvent::AwaitingApproval { request, .. } => {
@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_event_to_value_tool_call_started() {
-        let v = event_to_value(&RuntimeEvent::ToolCallStarted {
+        let v = event_to_value(&RuntimeEvent::ActionStarted {
             session_id: session_id(),
             tool_name: "shell".into(),
             args_json: r#"{"cmd":"ls"}"#.into(),
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_event_to_value_tool_call_finished() {
-        let v = event_to_value(&RuntimeEvent::ToolCallFinished {
+        let v = event_to_value(&RuntimeEvent::ActionFinished {
             session_id: session_id(),
             tool_name: "shell".into(),
             summary: "done".into(),
@@ -212,14 +212,14 @@ mod tests {
         let events: Vec<RuntimeEvent> = vec![
             RuntimeEvent::TextDelta { session_id: session_id(), text: "t".into(), agent_id: None, trace_id: None },
             RuntimeEvent::ThoughtDelta { session_id: session_id(), text: "t".into(), agent_id: None, trace_id: None },
-            RuntimeEvent::ToolCallStarted {
+            RuntimeEvent::ActionStarted {
                 session_id: session_id(),
                 tool_name: "t".into(),
                 args_json: "{}".into(),
                 agent_id: None,
                 trace_id: None,
             },
-            RuntimeEvent::ToolCallFinished {
+            RuntimeEvent::ActionFinished {
                 session_id: session_id(),
                 tool_name: "t".into(),
                 summary: "s".into(),
