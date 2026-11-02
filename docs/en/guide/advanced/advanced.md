@@ -1,3 +1,7 @@
+---
+description: "Advanced phi-agent usage: middleware, turn event logging, sessions and other production patterns for running Rust AI agents."
+---
+
 # Advanced Usage
 
 Middleware, sessions, event logging, and more.

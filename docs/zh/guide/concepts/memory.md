@@ -1,3 +1,7 @@
+---
+description: "phi-agent 的文件式记忆：Agent 以 markdown 在轮次和会话之间持久化信息，无向量库、无隐藏状态，透明可调试。"
+---
+
 # 记忆
 
 phi-agent 支持基于文件系统的记忆功能 — Agent 可以在对话轮次和会话之间持久化信息，通过读写 markdown 文件实现。

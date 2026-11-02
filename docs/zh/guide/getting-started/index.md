@@ -1,3 +1,7 @@
+---
+description: "5 分钟跑起第一个 phi-agent：安装 CLI、生成项目骨架，看 Rust 智能体真实完成一个任务。"
+---
+
 # 快速开始
 
 5 分钟跑起你的第一个 phi-agent。

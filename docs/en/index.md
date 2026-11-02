@@ -1,4 +1,6 @@
 ---
+title: "Lightweight Rust AI Agent Framework"
+description: "phi-agent is a lightweight Rust AI agent framework — ReAct loop, sessions, streaming, MCP and skills built in. Bring your tools and domain prompts."
 hide:
   - toc
   - navigation

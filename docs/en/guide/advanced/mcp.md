@@ -1,3 +1,7 @@
+---
+description: "phi-agent speaks MCP in both roles: connect external MCP servers as a client, or expose your agent to orchestrators as an MCP server."
+---
+
 # MCP (Model Context Protocol)
 
 phi-agent supports MCP in two roles: as a **client** (connecting to external MCP servers) and as a **server** (exposing the agent itself to external orchestrators).

@@ -1,3 +1,7 @@
+---
+description: "phi-agent memory is file-based and transparent: the agent persists facts as markdown between turns and sessions — no vector DB, no hidden state."
+---
+
 # Memory
 
 phi-agent supports file-based memory — the agent can persist information across conversation turns and sessions by reading and writing markdown files.

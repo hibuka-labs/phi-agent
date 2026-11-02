@@ -1,3 +1,7 @@
+---
+description: "Browser automation for phi-agent via the Chrome DevTools Protocol: 21 CDP tools behind the browser feature flag for web testing and scraping."
+---
+
 # Browser Automation
 
 > ⚠️ **Note: Browser tools are extension tools (not kernel tools), off by default.** Enable the `browser` feature explicitly to use them.

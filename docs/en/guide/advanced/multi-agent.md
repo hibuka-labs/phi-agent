@@ -1,3 +1,7 @@
+---
+description: "Spawn sub-agents for parallel work in phi-agent: the multi-agent feature delegates tasks to sub-agents with their own system prompts and tool sets."
+---
+
 # Multi-Agent
 
 phi-agent supports spawning sub-agents for parallel task execution. This is opt-in behind the `multi-agent` feature flag.

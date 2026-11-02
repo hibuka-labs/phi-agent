@@ -1,3 +1,7 @@
+---
+description: "Skills are reusable agent behaviors in markdown, following the agentskills.io open standard shared by Claude Code and Codex — portable across frameworks."
+---
+
 # Skills
 
 Skills are reusable agent behaviors defined as markdown files. phi-agent follows the [agentskills.io](https://agentskills.io) open standard — the same format used by Claude Code, Codex, and other modern agent frameworks.

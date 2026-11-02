@@ -1,3 +1,7 @@
+---
+description: "Build custom tools for your phi-agent in Rust: implement name, description, schema and call to plug in any API, database or domain logic."
+---
+
 # Custom Tools
 
 phi-agent doesn't bundle any tools — you bring your own by implementing the `Tool` trait.

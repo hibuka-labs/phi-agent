@@ -1,3 +1,7 @@
+---
+description: "React Loop Guard keeps Rust AI agents on track: it detects silent, half-finished or looping LLM turns and makes the agent recover automatically."
+---
+
 # React Loop Guard
 
 > LLMs aren't perfect. They go silent, give half-answers, or spin in circles. The Guard makes the agent recover on its own — instead of looping forever or calling it done too early.

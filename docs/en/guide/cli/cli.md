@@ -1,3 +1,7 @@
+---
+description: "The phi CLI for phi-agent: interactive REPL, one-shot runs and project scaffolding — one binary to run Rust AI agents from the terminal."
+---
+
 # CLI Usage
 
 The `phi` CLI supports three modes: REPL, one-shot, and project scaffolding.

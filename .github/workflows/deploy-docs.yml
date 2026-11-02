@@ -35,7 +35,10 @@ jobs:
           python-version: '3.x'
 
       - name: Install MkDocs
-        run: pip install mkdocs-material mkdocs-static-i18n
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libcairo2
+          pip install -r requirements.txt
 
       - name: Build
         run: mkdocs build
@@ -86,3 +89,8 @@ jobs:
 
           print('Done!')
           "
+
+      - name: Push URLs to Baidu
+        env:
+          BAIDU_PUSH_TOKEN: ${{ secrets.BAIDU_PUSH_TOKEN }}
+        run: python3 scripts/baidu_push.py

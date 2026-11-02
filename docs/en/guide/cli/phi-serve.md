@@ -1,3 +1,7 @@
+---
+description: "Run phi-agent as an MCP server with phi serve: bridge protocol over stdio or HTTP so CI pipelines and orchestrators can drive your agent."
+---
+
 # phi serve (Bridge Protocol)
 
 `phi serve` exposes phi-agent as an MCP server via the bridge protocol. External orchestrators, CI pipelines, or other tools can interact with the agent over stdio or HTTP.

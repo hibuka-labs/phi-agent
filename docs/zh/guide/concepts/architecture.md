@@ -1,3 +1,7 @@
+---
+description: "phi-agent 架构解析：agent-base 运行时内核、agent-works 的 MCP 与 Skills 层，以及各 crate 如何协作运行 Rust 智能体。"
+---
+
 # 架构设计
 
 phi-agent 与依赖 crate 之间的关系，以及关键设计决策。

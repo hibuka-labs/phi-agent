@@ -1,0 +1,56 @@
+{#-
+  SEO overrides: page <title> keywords, Open Graph locale,
+  x-default hreflang, and SoftwareApplication structured data.
+  See docs/superpowers/specs/2026-11-02-mkdocs-seo-design.md
+-#}
+{% extends "base.html" %}
+
+{% block htmltitle %}
+  {% set is_home = page and page.file and page.file.norm_src_uri == "index.md" %}
+  {% if is_home %}
+    {% if page.file.locale == "zh" %}
+      <title>phi-agent — 轻量级 Rust AI 智能体框架</title>
+    {% else %}
+      <title>phi-agent — Lightweight Rust AI Agent Framework</title>
+    {% endif %}
+  {% elif page and page.title %}
+    {% if page.file.locale == "zh" %}
+      <title>{{ page.title | striptags }} - phi-agent · Rust AI 智能体框架</title>
+    {% else %}
+      <title>{{ page.title | striptags }} - phi-agent · Rust AI Agent Framework</title>
+    {% endif %}
+  {% else %}
+    <title>phi-agent</title>
+  {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+  {% set is_zh = page and page.file and page.file.locale == "zh" %}
+  {% set is_home = page and page.file and page.file.norm_src_uri == "index.md" %}
+  <link rel="alternate" href="/" hreflang="x-default">
+  <meta property="og:site_name" content="phi-agent">
+  {% if is_zh %}
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:locale:alternate" content="en_US">
+  {% else %}
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="zh_CN">
+  {% endif %}
+  {% if is_home %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "phi-agent",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Cross-platform",
+    "url": "https://docs.phiagent.dev/",
+    "codeRepository": "https://github.com/hibuka-labs/phi-agent",
+    "license": "https://opensource.org/licenses/MIT",
+    "programmingLanguage": "Rust",
+    "description": {{ (page.meta.description or config.site_description) | tojson }},
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  {% endif %}
+{% endblock %}

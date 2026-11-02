@@ -1,3 +1,7 @@
+---
+description: "Focus makes structured single-purpose LLM calls outside the agent loop — classification, judgment and typed extraction returning plain Rust results."
+---
+
 # Focus — Structured Single-Purpose LLM Calls
 
 Focus is a lightweight primitive for making standalone, single-purpose LLM calls outside the main agent conversation loop. It's designed for **classification, judgment, and structured extraction** — anytime you need the LLM to make one focused decision and return a typed result.

@@ -1,3 +1,7 @@
+---
+description: "phi-agent 支持 MCP 双角色：作为客户端连接外部 MCP 服务器，或作为服务器把 Agent 暴露给外部编排器。"
+---
+
 # MCP (Model Context Protocol)
 
 phi-agent 支持两种 MCP 角色：作为**客户端**（连接外部 MCP 服务器）和作为**服务器**（将 Agent 自身暴露给外部编排器）。

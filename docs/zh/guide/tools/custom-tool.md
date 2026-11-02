@@ -1,3 +1,7 @@
+---
+description: "用 Rust 给 phi-agent 写自定义工具：实现 name、description、schema、call 四个方法，即可接入任意 API 和领域逻辑。"
+---
+
 # 自定义工具
 
 phi-agent 不内置任何工具 — 你通过实现 `Tool` trait 来创建自己的工具。

@@ -1,3 +1,7 @@
+---
+description: "Sessions and snapshots in phi-agent: persistent conversation state, workspace tracking and instant save/restore for long-running agent work."
+---
+
 # Sessions & Snapshots
 
 phi-agent manages conversation state through sessions and supports creating/restoring snapshots for long-running work.

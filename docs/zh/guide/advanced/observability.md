@@ -1,3 +1,7 @@
+---
+description: "phi-agent 自动采集结构化指标：零配置，每个会话生成 session_metrics.json，记录 LLM 调用、工具执行与耗时。"
+---
+
 # 可观测性
 
 phi-agent 自动采集结构化指标，无需额外配置 — 每个 session 都会在现有会话数据旁边写入 `session_metrics.json`。

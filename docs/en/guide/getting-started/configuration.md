@@ -1,3 +1,7 @@
+---
+description: "Configure phi-agent: LLM providers, API keys, models and agent behavior via CLI flags, environment variables or .env files, with clear precedence."
+---
+
 # Configuration
 
 All configuration options and how to set them.

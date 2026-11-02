@@ -1,3 +1,7 @@
+---
+description: "Structured metrics for every phi-agent session with zero setup — session_metrics.json records LLM calls, tool runs and timing automatically."
+---
+
 # Observability
 
 phi-agent collects structured metrics automatically. No setup required — every session writes a `session_metrics.json` file alongside the existing session data.

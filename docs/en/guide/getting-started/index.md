@@ -1,3 +1,7 @@
+---
+description: "Get your first phi-agent running in 5 minutes: install the CLI, scaffold a project, and watch a Rust AI agent complete a real task."
+---
+
 # Getting Started
 
 5 minutes to your first phi-agent.

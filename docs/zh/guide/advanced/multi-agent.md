@@ -1,3 +1,7 @@
+---
+description: "phi-agent 子 Agent 并行执行：multi-agent feature 支持任务委派，每个子 Agent 拥有独立的 system prompt 和工具集。"
+---
+
 # 多 Agent
 
 phi-agent 支持生成子 Agent 进行并行任务执行。此功能由 `multi-agent` feature flag 控制，需主动开启。

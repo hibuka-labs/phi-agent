@@ -1,3 +1,7 @@
+---
+description: "How phi-agent is built: the agent-base runtime kernel, the agent-works MCP and skills layer, and how the crates fit together to run Rust AI agents."
+---
+
 # Architecture
 
 How phi-agent fits together with its dependencies, and why certain decisions were made.

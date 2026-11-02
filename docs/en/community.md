@@ -1,3 +1,7 @@
+---
+description: "Join the phi-agent community on GitHub Discussions — ask questions, share agent designs and follow releases of this Rust AI agent framework."
+---
+
 # Community
 
 ## GitHub Discussions

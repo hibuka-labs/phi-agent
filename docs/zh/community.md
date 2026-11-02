@@ -1,3 +1,7 @@
+---
+description: "加入 phi-agent 社区：在 GitHub Discussions 提问、分享智能体设计，关注 Rust AI 智能体框架的版本发布。"
+---
+
 # 社区
 
 ## GitHub Discussions

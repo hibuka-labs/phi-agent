@@ -1,3 +1,7 @@
+---
+description: "phi-agent API reference on docs.rs: full Rustdoc for the builder, tools, events and session APIs, auto-generated from source comments."
+---
+
 # API Reference
 
 phi-agent's API documentation is auto-generated from doc comments and hosted on [docs.rs](https://docs.rs/phi-agent).

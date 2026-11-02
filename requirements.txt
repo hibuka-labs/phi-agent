@@ -1,2 +1,2 @@
-mkdocs-material
+mkdocs-material[imaging]
 mkdocs-static-i18n

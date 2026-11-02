@@ -1,3 +1,7 @@
+---
+description: "phi-agent 内核工具：file 默认开启，shell 和多 Agent 由 feature flag 按需启用，安全默认、自由组合。"
+---
+
 # 内核工具
 
 phi-agent 通过 feature flag 提供内核原语。`file` 默认开启，`shell` 和 `multi-agent` 按需启用：

@@ -1,3 +1,7 @@
+---
+description: "phi-agent 进阶用法：Middleware 中间件、事件日志、会话管理等生产环境模式。"
+---
+
 # 高级用法
 
 Middleware、会话管理、事件日志等进阶功能。

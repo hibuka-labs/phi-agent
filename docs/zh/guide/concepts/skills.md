@@ -1,3 +1,7 @@
+---
+description: "Skills 是 markdown 定义的可复用 Agent 行为，遵循 agentskills.io 开放标准，与 Claude Code、Codex 格式互通。"
+---
+
 # Skills（技能）
 
 Skills 是以 markdown 文件定义的可复用 Agent 行为。phi-agent 遵循 [agentskills.io](https://agentskills.io) 开放标准 — 与 Claude Code、Codex 等主流 Agent 框架使用相同的格式。

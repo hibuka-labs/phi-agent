@@ -1,3 +1,7 @@
+---
+description: "phi-agent API 文档：builder、工具、事件、会话等 API 的完整 Rustdoc，由源码注释自动生成，托管于 docs.rs。"
+---
+
 # API 参考
 
 phi-agent 的 API 文档从源码注释自动生成，托管在 [docs.rs](https://docs.rs/phi-agent)。

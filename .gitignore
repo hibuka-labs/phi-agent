@@ -40,3 +40,7 @@ tmp/
 
 # Deploy guides (internal)
 deploy/
+
+# mkdocs social plugin cache (fonts are committed; generated cards are not)
+social-cache/*
+!social-cache/fonts/

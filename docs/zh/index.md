@@ -1,4 +1,6 @@
 ---
+title: "轻量级 Rust AI 智能体框架"
+description: "phi-agent 是轻量级 Rust AI 智能体框架：内置 ReAct 循环、会话、流式输出、MCP 与 Skills，你只需编写工具和领域提示词。"
 hide:
   - toc
   - navigation

@@ -1,3 +1,7 @@
+---
+description: "phi-agent kernel tools: file I/O on by default, shell and multi-agent behind feature flags — safe-by-default primitives for Rust AI agents."
+---
+
 # Kernel Tools
 
 phi-agent provides kernel primitives via feature flags. `file` is on by default; `shell` and `multi-agent` are opt-in:

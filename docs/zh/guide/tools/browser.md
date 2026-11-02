@@ -1,3 +1,7 @@
+---
+description: "phi-agent 浏览器自动化：基于 Chrome DevTools Protocol 的 21 个 CDP 工具，由 browser feature flag 控制。"
+---
+
 # 浏览器自动化
 
 > ⚠️ **注意：浏览器工具是扩展工具（非内核工具），默认关闭。** 需要显式启用 `browser` feature 才能使用。
