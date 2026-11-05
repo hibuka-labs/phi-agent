@@ -67,7 +67,7 @@ pub use agent_works::multi_agent::{
 #[cfg(feature = "multi-agent")]
 pub use agent_works::multi_agent::fan_in::{ChildResultRoute, ChildResultRouter};
 #[cfg(feature = "multi-agent")]
-pub use agent_works::multi_agent::registry::{AgentSnapshot, RegistrySnapshot};
+pub use agent_works::multi_agent::registry::{AgentSnapshot, AgentStatus, RegistrySnapshot, ResultKind};
 
 // ── Persistent auto-memory (Phase 9b, feature-gated) ──
 /// Memory configuration for persistent auto-memory: consumer-injected policy
