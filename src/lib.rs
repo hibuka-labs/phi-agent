@@ -43,8 +43,8 @@ pub use agent_base::{
 // stays strategy-free: contract + primitives only).
 pub use agent_works::AgentBuilder;
 pub use agent_works::rotation_policy::{
-    DEFAULT_SEED_MESSAGE, TokenBudgetAction, TokenBudgetConfig, TokenBudgetCore, TokenBudgetState,
-    build_context_window_info, token_budget_base_overhead,
+    DEFAULT_SEED_MESSAGE, DEFAULT_SEED_MESSAGE_NO_HANDOFF, HintSlot, TokenBudgetAction, TokenBudgetConfig,
+    TokenBudgetCore, TokenBudgetState, build_context_window_info, token_budget_base_overhead,
 };
 
 // ── phi-telemetry (metrics types and storage) ──

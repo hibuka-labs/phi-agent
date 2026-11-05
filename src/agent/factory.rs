@@ -189,6 +189,23 @@ impl PhiAgent {
         self.runtime.run_turn_ephemeral_input(session_id, query, on_event).await
     }
 
+    /// Like `run_turn`, but the query is **synthetic**: machine-composed
+    /// input on the user role (a background-task wake, a child-result
+    /// batch). The transcript keeps it — the model acts on it — but the
+    /// message carries the synthetic flag, so the context-rotation trail
+    /// never mistakes it for the user's own words.
+    pub async fn run_turn_synthetic_input<F>(
+        &self,
+        session_id: SessionId,
+        query: &str,
+        on_event: F,
+    ) -> AgentResult<RunOutcome>
+    where
+        F: FnMut(RuntimeEvent) -> AgentResult<()> + Send + 'static,
+    {
+        self.runtime.run_turn_synthetic_input(session_id, query, on_event).await
+    }
+
     /// The pristine build-time system prompt (async — safe inside a runtime).
     /// Hosts that bake session state into the prompt (e.g. skill activation)
     /// capture this once and append to it, never recompose.
@@ -324,8 +341,10 @@ impl PhiAgent {
     ///
     /// Creates a fresh session (which receives a fresh System prompt), then
     /// replaces the chat messages with `[fresh_system] + messages`.  The
-    /// caller must ensure `messages` contains **no** `System` messages — use
-    /// [`crate::session::load_session_messages`] which filters them out automatically.
+    /// caller must ensure `messages` contains **no stale system prompt** —
+    /// use [`crate::session::load_session_messages`], which returns the
+    /// window as persisted (mid-list `System` rows are window context — the
+    /// rotation hint slot and guidance — and are kept on purpose).
     ///
     /// # Errors
     /// Returns an error if `messages` is empty / System-only, or if the
@@ -765,7 +784,12 @@ mod tests {
 
         // Simulate a conversation: User + Assistant.
         let historical = vec![
-            ChatMessage::User { content: "what is 2+2?".to_string(), images: vec![], ephemeral: false },
+            ChatMessage::User {
+                content: "what is 2+2?".to_string(),
+                images: vec![],
+                ephemeral: false,
+                synthetic: false,
+            },
             ChatMessage::Assistant {
                 content: Some("4".to_string()),
                 reasoning_content: None,
@@ -814,7 +838,7 @@ mod tests {
         // Persist a conversation to disk, then load and resume.
         let tmp = tempfile::TempDir::new().unwrap();
         let messages = vec![
-            ChatMessage::User { content: "hello".to_string(), images: vec![], ephemeral: false },
+            ChatMessage::User { content: "hello".to_string(), images: vec![], ephemeral: false, synthetic: false },
             ChatMessage::Assistant {
                 content: Some("hi!".to_string()),
                 reasoning_content: Some("thinking...".to_string()),

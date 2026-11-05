@@ -643,17 +643,25 @@ fn strip_stale_fields(msg: &mut ChatMessage) {
 /// Persist the current window's full `ChatMessage` list as a JSONL snapshot.
 ///
 /// Writes atomically (tmp → rename) so a crash mid-write never corrupts the
-/// existing file.  System and ephemeral messages are skipped — the resumed
-/// session will use a fresh system prompt.
+/// existing file.  Skipped: ephemeral messages, and the leading `System` row
+/// (the system prompt — the resumed session bakes a fresh one).  Mid-list
+/// non-ephemeral `System` rows are **kept**: context rotation stores the
+/// window context (`<context_window>`, the hint slot, guidance) that way, and
+/// stripping them here erased the handoff on every process restart (the
+/// 3-row window archives of session 20261103_4206f951).
 pub fn persist_window_messages(session_dir: &Path, messages: &[ChatMessage]) -> io::Result<()> {
     let path = messages_jsonl_path(session_dir);
     let tmp = path.with_extension("jsonl.tmp");
 
     let mut file = File::create(&tmp)?;
-    for mut msg in messages.iter().cloned() {
+    for (i, mut msg) in messages.iter().cloned().enumerate() {
         match &msg {
-            ChatMessage::System { .. } => continue,
+            ChatMessage::System { ephemeral: true, .. } => continue,
             ChatMessage::User { ephemeral: true, .. } => continue,
+            // The system prompt is position zero of the engine's message
+            // list; the resumed session re-bakes it, so it must not be
+            // replayed alongside the fresh copy.
+            ChatMessage::System { .. } if i == 0 => continue,
             _ => {},
         }
         strip_stale_fields(&mut msg);
@@ -671,7 +679,13 @@ pub fn persist_window_messages(session_dir: &Path, messages: &[ChatMessage]) -> 
 ///
 /// Sanitization:
 /// - Skip empty lines and malformed JSON (logged + skipped, not fatal).
-/// - Drop any `System` messages (the resumed session uses a fresh system prompt).
+/// - Keep `System` messages: the file never carries the system prompt (see
+///   [`persist_window_messages`]), so any `System` row in it is window
+///   context — the rotation skeleton's `<context_window>`, hint slot and
+///   guidance. Dropping those here erased the handoff whenever a window was
+///   resumed mid-flight (the 3-row window archives of session
+///   20261103_4206f951); the fresh prompt is prepended by
+///   [`crate::agent::PhiAgent::resume_session`] around them.
 /// - Strip `reasoning_content` / `thinking_signature` from Assistant messages.
 /// - Patch dangling tool calls at the tail: if the last Assistant message has
 ///   `tool_calls` that were never answered, synthesize a `Tool` response with
@@ -698,10 +712,6 @@ pub fn load_session_messages(session_dir: &Path) -> io::Result<Vec<ChatMessage>>
                 continue;
             },
         };
-        // Drop System messages — resume prepends a fresh system prompt.
-        if matches!(msg, ChatMessage::System { .. }) {
-            continue;
-        }
         strip_stale_fields(&mut msg);
         messages.push(msg);
     }
@@ -1229,7 +1239,7 @@ mod tests {
     /// Build a minimal ChatMessage list for testing (no System messages).
     fn sample_messages() -> Vec<ChatMessage> {
         vec![
-            ChatMessage::User { content: "hello".to_string(), images: vec![], ephemeral: false },
+            ChatMessage::User { content: "hello".to_string(), images: vec![], ephemeral: false, synthetic: false },
             ChatMessage::Assistant {
                 content: Some("hi there".to_string()),
                 reasoning_content: Some("thinking...".to_string()),
@@ -1266,20 +1276,80 @@ mod tests {
     }
 
     #[test]
-    fn test_persist_skips_system_and_ephemeral() {
+    fn test_persist_skips_prompt_and_ephemeral_only() {
         let tmp = TempDir::new().unwrap();
         let dir = tmp.path();
 
         let msgs = vec![
             ChatMessage::System { content: "system prompt".to_string(), ephemeral: false },
-            ChatMessage::User { content: "ephemeral ask".to_string(), images: vec![], ephemeral: true },
-            ChatMessage::User { content: "real question".to_string(), images: vec![], ephemeral: false },
+            ChatMessage::User {
+                content: "ephemeral ask".to_string(),
+                images: vec![],
+                ephemeral: true,
+                synthetic: false,
+            },
+            ChatMessage::System { content: "context window info".to_string(), ephemeral: false },
+            ChatMessage::User {
+                content: "real question".to_string(),
+                images: vec![],
+                ephemeral: false,
+                synthetic: false,
+            },
+            ChatMessage::System { content: "reminder".to_string(), ephemeral: true },
         ];
         persist_window_messages(dir, &msgs).unwrap();
 
         let loaded = load_session_messages(dir).unwrap();
-        assert_eq!(loaded.len(), 1, "System + ephemeral User should be filtered");
-        assert!(matches!(&loaded[0], ChatMessage::User { content, .. } if content == "real question"));
+        assert_eq!(loaded.len(), 2, "prompt + ephemeral rows filtered, window context kept");
+        assert!(
+            matches!(&loaded[0], ChatMessage::System { content, .. } if content == "context window info"),
+            "mid-list System row is window context and must survive: {:?}",
+            loaded[0]
+        );
+        assert!(matches!(&loaded[1], ChatMessage::User { content, .. } if content == "real question"));
+    }
+
+    /// Regression fixture shaped from the 3-row window archives of session
+    /// 20261103_4206f951: a window that was resumed mid-flight came back
+    /// without its `<context_window>`, hint slot or guidance, because both
+    /// the persist and the load side stripped every System row. The whole
+    /// rotation skeleton except the prompt must survive the roundtrip —
+    /// `resume_session` re-bakes the prompt around it.
+    #[test]
+    fn test_window_context_survives_resume_roundtrip() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+
+        let msgs = vec![
+            ChatMessage::system("You are phimint, a coding agent."),
+            ChatMessage::system("<context_window>budget 200k, used 40k</context_window>"),
+            ChatMessage::system("<thread_hint>Sow the nursing detail page.</thread_hint>"),
+            ChatMessage::user("sow the nursing detail page"),
+            ChatMessage::system("Use notes/history tools silently to maintain continuity."),
+            ChatMessage::user_synthetic("Your previous context window was archived."),
+        ];
+        persist_window_messages(dir, &msgs).unwrap();
+
+        let loaded = load_session_messages(dir).unwrap();
+        assert_eq!(loaded.len(), 5, "everything but the leading prompt survives");
+
+        let texts: Vec<&str> = loaded
+            .iter()
+            .map(|m| match m {
+                ChatMessage::System { content, .. } | ChatMessage::User { content, .. } => content.as_str(),
+                other => panic!("unexpected message {:?}", other),
+            })
+            .collect();
+        assert_eq!(texts[0], "<context_window>budget 200k, used 40k</context_window>");
+        assert_eq!(texts[1], "<thread_hint>Sow the nursing detail page.</thread_hint>");
+        assert_eq!(texts[2], "sow the nursing detail page");
+        assert_eq!(texts[3], "Use notes/history tools silently to maintain continuity.");
+        assert_eq!(texts[4], "Your previous context window was archived.");
+
+        // Provenance survives persistence: the trail stays real, the seed
+        // stays synthetic, so a later rotation still knows which is which.
+        assert!(matches!(&loaded[2], ChatMessage::User { synthetic: false, ephemeral: false, .. }));
+        assert!(matches!(&loaded[4], ChatMessage::User { synthetic: true, ephemeral: false, .. }));
     }
 
     #[test]
@@ -1308,7 +1378,7 @@ mod tests {
 
         // Assistant with two tool_calls, only one answered.
         let msgs = vec![
-            ChatMessage::User { content: "run tools".to_string(), images: vec![], ephemeral: false },
+            ChatMessage::User { content: "run tools".to_string(), images: vec![], ephemeral: false, synthetic: false },
             ChatMessage::Assistant {
                 content: None,
                 reasoning_content: None,
@@ -1355,7 +1425,12 @@ mod tests {
         let dir = tmp.path();
 
         // Write an initial valid file.
-        let original = vec![ChatMessage::User { content: "original".to_string(), images: vec![], ephemeral: false }];
+        let original = vec![ChatMessage::User {
+            content: "original".to_string(),
+            images: vec![],
+            ephemeral: false,
+            synthetic: false,
+        }];
         persist_window_messages(dir, &original).unwrap();
 
         // Simulate a partial write by writing a truncated tmp and NOT renaming.
