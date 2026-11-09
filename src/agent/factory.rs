@@ -2,8 +2,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use agent_base::{
-    AgentError, AgentResult, AgentRuntime, ChatMessage, ReasoningEffort, RunOutcome, RuntimeEvent, SafetyConfig,
-    SessionId,
+    AgentError, AgentResult, AgentRuntime, ChatMessage, ImageAttachment, ReasoningEffort, RunOutcome, RuntimeEvent,
+    SafetyConfig, SessionId,
 };
 
 use agent_works::AgentBuilder;
@@ -171,6 +171,22 @@ impl PhiAgent {
         F: FnMut(RuntimeEvent) -> AgentResult<()> + Send + 'static,
     {
         self.runtime.run_turn(session_id, query, on_event).await
+    }
+
+    /// Like `run_turn`, but the user message carries pictures (the paste
+    /// pipeline's face): the images ride the message through the existing
+    /// vision channel and land in the session's history with the text.
+    pub async fn run_turn_with_images<F>(
+        &self,
+        session_id: SessionId,
+        query: &str,
+        images: Vec<ImageAttachment>,
+        on_event: F,
+    ) -> AgentResult<RunOutcome>
+    where
+        F: FnMut(RuntimeEvent) -> AgentResult<()> + Send + 'static,
+    {
+        self.runtime.run_turn_with_images(session_id, query, images, on_event).await
     }
 
     /// Like `run_turn`, but the query is pushed as an **ephemeral** user

@@ -32,12 +32,12 @@ pub use agent_base::{
     AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler, ApprovalRequest, AskAnswer, AskOption, BatchStatus,
     ChatMessage, CheckpointData, CheckpointStep, CompactionKind, CompactionOutcome, ConsecutiveFailureRecovery,
     Content, ContextCompaction, ContextWindowManager, DenyAllApprovalHandler, ExecCtx, ExecError, FinishReason,
-    InteractionChannel, InteractionError, Language, LlmTurnResult, Middleware, Observation, ObservationEvent,
-    ParseError, ParseOutcome, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx, ReasoningConfig, ReasoningEffort,
-    RetryOnError, RiskLevel, RunOutcome, RunState, RuntimeEvent, SafetyConfig, SessionError, SessionHandle, SessionId,
-    SessionIdGenerator, Tool, ToolContext, ToolDecision, ToolMetadata, ToolPolicy, ToolRegistry, TurnFactMiddleware,
-    TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx, estimate_messages_tokens, first_system_prompt,
-    shared_session_ids,
+    ImageAttachment, InteractionChannel, InteractionError, Language, LlmTurnResult, Middleware, Observation,
+    ObservationEvent, ParseError, ParseOutcome, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx, ReasoningConfig,
+    ReasoningEffort, RetryOnError, RiskLevel, RunOutcome, RunState, RuntimeEvent, SafetyConfig, SessionError,
+    SessionHandle, SessionId, SessionIdGenerator, Tool, ToolContext, ToolDecision, ToolMetadata, ToolPolicy,
+    ToolRegistry, TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
+    estimate_messages_tokens, first_system_prompt, shared_session_ids,
 };
 // Token-budget window strategy — a pure strategy in agent-works (agent-base
 // stays strategy-free: contract + primitives only).
@@ -87,6 +87,11 @@ pub use agent_base::UserEvent;
 pub use agent_base::engine::max_turns_nudge::{MaxTurnsNudgeConfig, MaxTurnsNudgeMiddleware};
 /// Middleware that breaks repeated identical tool-call loops (e.g. polling).
 pub use agent_base::engine::repeat_tool_limit::{RepeatToolLimitConfig, RepeatToolLimitMiddleware};
+/// Image mechanics shared by tools and the wire layer: magic-byte sniffing,
+/// header-only dimensions, downscale-to-fit, base64 helpers and the request
+/// image budget. The TUI uses `to_base64` when riding user-attached images
+/// into `run_turn_with_images`.
+pub use agent_base::image_ops;
 /// LLM provider trait family (`LlmProvider`, `Protocol`, `config::LlmConfig`):
 /// build a provider with [`create_provider`] and hand it to the runtime.
 pub use agent_base::llm_trait;
@@ -97,6 +102,11 @@ pub use agent_base::types::NoticeKind;
 pub use agent_works::guard::{DefaultGuard, DefaultGuardConfig, ReasoningOnlyAction};
 /// LLM provider factory (resolves protocol/client from an [`llm_trait`] config).
 pub use llm_unified::create_provider;
+/// Model knowledge for the wire: capability profiles per `model@protocol`.
+/// Consumers that must not fabricate facts (the product's model picker) ask
+/// `lookup_known` and render "unknown" for what the registry has never heard
+/// of — the default profile is a wire fallback, never knowledge.
+pub use llm_unified::model_registry::{ModelProfile, ModelRegistry};
 
 // ── Kernel tools (feature-gated) ──
 #[cfg(feature = "shell")]

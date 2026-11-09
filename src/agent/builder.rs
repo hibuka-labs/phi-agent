@@ -247,23 +247,26 @@ fn base_agent_builder_with_file_options_inner(
     // ── File tools (opt-in via `file` feature) ──
     #[cfg(feature = "file")]
     {
-        use phi_kernel_tools::file::{EditFileTool, ListFilesTool, ReadFileTool, WriteFileTool};
+        use phi_kernel_tools::file::{EditFileTool, ListFilesTool, ReadFileTool, ReadImageTool, WriteFileTool};
         let read_tool = ReadFileTool::new(cwd.clone());
         let write_tool = WriteFileTool::new(cwd.clone());
         let edit_tool = EditFileTool::new(cwd.clone());
         let list_tool = ListFilesTool::with_excludes(cwd.clone(), file_options.excludes.clone());
+        let image_tool = ReadImageTool::new(cwd.clone());
         if file_options.confinement {
             builder = builder
                 .register_tool_arc(Arc::new(read_tool.with_confinement()))
                 .register_tool_arc(Arc::new(write_tool.with_confinement()))
                 .register_tool_arc(Arc::new(edit_tool.with_confinement()))
-                .register_tool_arc(Arc::new(list_tool.with_confinement()));
+                .register_tool_arc(Arc::new(list_tool.with_confinement()))
+                .register_tool_arc(Arc::new(image_tool.with_confinement()));
         } else {
             builder = builder
                 .register_tool_arc(Arc::new(read_tool))
                 .register_tool_arc(Arc::new(write_tool))
                 .register_tool_arc(Arc::new(edit_tool))
-                .register_tool_arc(Arc::new(list_tool));
+                .register_tool_arc(Arc::new(list_tool))
+                .register_tool_arc(Arc::new(image_tool));
         }
     }
 
