@@ -82,6 +82,7 @@ plugins:
                 - Multi-Agent: guide/advanced/multi-agent.md
                 - MCP: guide/advanced/mcp.md
                 - Session & Snapshots: guide/advanced/session.md
+                - Timeouts & Recovery: guide/advanced/timeout-recovery.md
                 - Observability: guide/advanced/observability.md
                 - Advanced Usage: guide/advanced/advanced.md
             - CLI:
@@ -112,6 +113,7 @@ plugins:
                 - 多 Agent: guide/advanced/multi-agent.md
                 - MCP: guide/advanced/mcp.md
                 - 会话与快照: guide/advanced/session.md
+                - 超时与恢复语义: guide/advanced/timeout-recovery.md
                 - 可观测性: guide/advanced/observability.md
                 - 高级用法: guide/advanced/advanced.md
             - CLI:

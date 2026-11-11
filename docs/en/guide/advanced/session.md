@@ -94,3 +94,8 @@ Session IDs and snapshot names are validated:
 
 - Session IDs: alphanumeric + hyphens + underscores, max 64 characters
 - Snapshot names: alphanumeric + hyphens + underscores, max 128 characters
+
+## See also
+
+- [Timeouts & Recovery](timeout-recovery.md) — what a restored session knows
+  about interrupted tool calls, and why recovery never re-executes an action.
