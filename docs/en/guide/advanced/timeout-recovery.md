@@ -92,6 +92,13 @@ have happened. What the model sees after restore is a complete, provider-valid
 history (assistant tool-call message + one result per call) ending in those
 synthetic fates, so the next turn starts from honest ground.
 
+The exact fate text depends on which recovery entry point restores the
+session: the checkpoint-replay path records `已中断/未执行`, while the
+window-snapshot (`messages.jsonl`) restore path patches dangling calls with
+`interrupted`. Both mean the same thing — the call was interrupted and its
+external effect is unknown — and neither is a confirmation that nothing
+happened.
+
 ### Multi-agent: a wait timeout is not a failure
 
 When a parent agent waits on a child with a deadline and the deadline elapses,
@@ -112,7 +119,7 @@ once.)
 | Question | After restore |
 |---|---|
 | Which calls was the interrupted batch about to run? | Yes — call id, tool name and arguments, from the checkpoint |
-| Did a call from a dangling batch take effect? | **Unknown** — recorded as `已中断/未执行`; never assumed either way |
+| Did a call from a dangling batch take effect? | **Unknown** — recorded as an interrupted fate (`已中断/未执行` or `interrupted`, by recovery entry point); never assumed either way |
 | What did a completed batch return? | The exact recorded observation |
 | A provider idempotency key for safe retry? | Not provided — that contract belongs to the tool / provider |
 
@@ -131,7 +138,8 @@ once.)
 
 ## What this means for safe retries
 
-Treat `[Tool Timeout]` and `已中断/未执行` as **unknown outcomes**:
+Treat `[Tool Timeout]` and the interrupted fates (`已中断/未执行`,
+`interrupted`) as **unknown outcomes**:
 
 1. **Verify before re-issuing.** Read back the external state (did the email
    send? does the record exist?) instead of assuming failure.
