@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-14
+
+### Changed
+- **Breaking (dependency):** `agent-base` requirement bumped from 0.13.0 to
+  0.14.0, `agent-works` from 0.13.0 to 0.14.0, `phi-kernel-tools` from
+  0.13.0 to 0.14.0, `phi-tools` from 0.8.1 to 0.9.0, `phi-telemetry` from
+  0.7.5 to 0.8.0 and `log-core` from 0.1.4 to 0.1.5 — the whole family moves
+  to one version of each crate in a single chain, so the dependency graph
+  never carries two copies of a crate (which is what E0063 is).
+
+
+
 ## [0.21.1] - 2026-11-14
 
 ### Added
