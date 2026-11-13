@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-11-14
+
+### Added
+- **A page on tool timeouts and recovery.** The docs site now carries
+  `docs/en/guide/advanced/timeout-recovery.md` and its Chinese counterpart,
+  explaining what happens when a tool call times out, how the recovery entry
+  point is reached, and what the agent reports when the work is interrupted
+  rather than completed.
+
+### Changed
+- Documentation only — no API change. The `docs/` tree ships inside the crate,
+  so the new page only becomes reachable after a release.
+
 ## [0.21.0] - 2026-11-09
 
 ### Added
