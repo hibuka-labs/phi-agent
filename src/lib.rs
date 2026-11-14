@@ -14,10 +14,8 @@ pub mod bridge;
 pub mod cli;
 pub mod config;
 pub mod event_log;
-/// System prompt generation (EN/CN).
 pub mod prompt;
 pub mod render;
-/// Session management — ID resolution, locking, snapshots, cleanup.
 pub mod session;
 
 // ── Common agent-base types ──
