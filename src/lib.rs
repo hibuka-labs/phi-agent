@@ -26,16 +26,16 @@ pub mod session;
 // because phi-agent is a full-stack framework that includes multi-agent, skills, MCP, etc.
 // For the bare runtime builder, use agent_base::AgentBuilder directly.
 pub use agent_base::{
-    Action, ActionBackend, ActionExecutor, ActionFormat, ActionOutcome, AgentError, AgentResult, AgentRuntime,
-    AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler, ApprovalRequest, AskAnswer, AskOption, BatchStatus,
-    ChatMessage, CheckpointData, CheckpointStep, CompactionKind, CompactionOutcome, ConsecutiveFailureRecovery,
-    Content, ContextCompaction, ContextWindowManager, DenyAllApprovalHandler, ExecCtx, ExecError, FinishReason,
-    ImageAttachment, InteractionChannel, InteractionError, Language, LlmTurnResult, Middleware, Observation,
-    ObservationEvent, ParseError, ParseOutcome, PlanItem, PlanStepStatus, PostLlmCtx, PreLlmCtx, ReasoningConfig,
-    ReasoningEffort, RetryOnError, RiskLevel, RunOutcome, RunState, RuntimeEvent, SafetyConfig, SessionError,
-    SessionHandle, SessionId, SessionIdGenerator, Tool, ToolContext, ToolDecision, ToolMetadata, ToolPolicy,
-    ToolRegistry, TurnFactMiddleware, TurnToolLimitMiddleware, UpdatePlanTool, UserMessageCtx,
-    estimate_messages_tokens, first_system_prompt, shared_session_ids,
+    Action, ActionBackend, ActionExecutor, ActionFormat, ActionOutcome, ActivateTool, AgentError, AgentResult,
+    AgentRuntime, AllowAllApprovalHandler, ApprovalDecision, ApprovalHandler, ApprovalRequest, AskAnswer, AskOption,
+    BatchStatus, ChatMessage, CheckpointData, CheckpointStep, CompactionKind, CompactionOutcome,
+    ConsecutiveFailureRecovery, Content, ContextCompaction, ContextWindowManager, DeferredTool, DenyAllApprovalHandler,
+    ExecCtx, ExecError, FinishReason, ImageAttachment, InteractionChannel, InteractionError, Language, LlmTurnResult,
+    Middleware, Observation, ObservationEvent, ParseError, ParseOutcome, PlanItem, PlanStepStatus, PostLlmCtx,
+    PreLlmCtx, ReasoningConfig, ReasoningEffort, RetryOnError, RiskLevel, RunOutcome, RunState, RuntimeEvent,
+    SafetyConfig, SessionError, SessionHandle, SessionId, SessionIdGenerator, Tool, ToolActivation, ToolContext,
+    ToolDecision, ToolExposure, ToolMetadata, ToolPolicy, ToolRegistry, TurnFactMiddleware, TurnToolLimitMiddleware,
+    UpdatePlanTool, UserMessageCtx, estimate_messages_tokens, first_system_prompt, shared_session_ids,
 };
 // Token-budget window strategy — a pure strategy in agent-works (agent-base
 // stays strategy-free: contract + primitives only).
