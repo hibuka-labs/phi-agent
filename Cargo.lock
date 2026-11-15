@@ -19,9 +19,9 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "agent-base"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e707e8b8e2b3bf2c19338b13dcdb540259017c7ce8c90a06b114b2009dff644"
+checksum = "98b33717791e319c697d1dcb39a242c4d9998f8e7c149b1b9ebc7dcc44681e67"
 dependencies = [
  "agent-types",
  "anyhow",
@@ -48,9 +48,9 @@ dependencies = [
 
 [[package]]
 name = "agent-types"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79a6fef86915b20bef2215d82de49412f064306d6fa0c3f8536ecceddaeb08a9"
+checksum = "f5a3bf9de58fb9a6b1c98197cf012a03b21ff86b64699a983ae1bf4128e61eee"
 dependencies = [
  "llm-trait",
  "serde",
@@ -59,9 +59,9 @@ dependencies = [
 
 [[package]]
 name = "agent-works"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e845e16c43efa8544c2cb29d403827a4ff2a2335cd6548722dc64fe61734481"
+checksum = "ae6eedb8bebd01c1139698b7a2a2568179f595e033d8fca0aa62d3034cf3ec99"
 dependencies = [
  "agent-base",
  "async-trait",
@@ -562,9 +562,9 @@ dependencies = [
 
 [[package]]
 name = "codexec"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d85aa2c3ef52291675747c8108473e5a66aa5205ee830fd2952ef250951f4eb8"
+checksum = "450375adef6bce32b8414351d6dff7a4e68c6cb60e8b540eca4b6d1bea2422ed"
 dependencies = [
  "async-trait",
  "phi-cap",
@@ -1515,7 +1515,7 @@ dependencies = [
  "base64 0.22.1",
  "derive_builder",
  "log",
- "rand 0.10.3",
+ "rand 0.10.4",
  "regex",
  "serde",
  "serde_json",
@@ -2087,9 +2087,9 @@ checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 
 [[package]]
 name = "llm-trait"
-version = "0.1.5"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4fd856d87952643e91c1652d814ecc2af9dc2f96d9a42ae486f4d82c1ff3b9f"
+checksum = "03304495b38a691cde15d75f5b9fc7974df4ffe3ea4460892cfbc227fd7873ef"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2104,9 +2104,9 @@ dependencies = [
 
 [[package]]
 name = "llm-unified"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cd059bae957f18930968825618df63767fc6c989ab608add443392e1aec3ac9"
+checksum = "4dd2a5b8e0f27612a6f834e1440f6429d18ae06b7926c3771bf11e4b33fe569d"
 dependencies = [
  "async-trait",
  "clap",
@@ -2114,7 +2114,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "llm-trait",
- "rand 0.10.3",
+ "rand 0.10.4",
  "reqwest",
  "serde",
  "serde_json",
@@ -2482,7 +2482,7 @@ dependencies = [
 
 [[package]]
 name = "phi-agent"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -2527,9 +2527,9 @@ dependencies = [
 
 [[package]]
 name = "phi-kernel-tools"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a1fb0b8129c3efd560cf733bc7f8d2d5d02580a827074f8e34b61e4e38d3fe8"
+checksum = "d1d06808f023f3f201d19f3628b781a1067bb8471aa51d15152d35958f4b7e0d"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -2567,9 +2567,9 @@ dependencies = [
 
 [[package]]
 name = "phi-telemetry"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1082a48620546c48f460ea3c3b63f46e31774eb974c894e6e24524957fd0ee9"
+checksum = "7c62434ef71fdb06df0f6ce987d118ea0590a5fc3b0bad2c91361290bcb440c2"
 dependencies = [
  "agent-base",
  "anyhow",
@@ -2582,9 +2582,9 @@ dependencies = [
 
 [[package]]
 name = "phi-tools"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13a8698efe6afe2c85f851f9477c2e7870e5044688cdacc46368e825dfdd200e"
+checksum = "7884c26bbc0db22168b169bd0bc613e2b30ec57c8504b7e9a25f1da7438f5f43"
 dependencies = [
  "agent-base",
  "anyhow",
@@ -2782,7 +2782,7 @@ dependencies = [
  "chacha20",
  "core_detect",
  "num-traits",
- "rand 0.10.3",
+ "rand 0.10.4",
  "rand_xorshift",
  "regex-syntax",
  "rusty-fork",
@@ -2861,7 +2861,7 @@ dependencies = [
  "bytes",
  "getrandom 0.4.3",
  "lru-slab",
- "rand 0.10.3",
+ "rand 0.10.4",
  "rand_pcg",
  "ring",
  "rustc-hash",
@@ -2931,9 +2931,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.10.3"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65c9fb96cbc91e3478eaae79a69fcd3f1ae4ad052e471fe6732fff548984b4af"
+checksum = "8f6fa277c67e6ea590466f04c3fe82cb509f0864fe470643e5570de9514a9b11"
 dependencies = [
  "chacha20",
  "getrandom 0.4.3",
@@ -4702,7 +4702,7 @@ dependencies = [
  "bytes",
  "cap-primitives",
  "futures",
- "rand 0.10.3",
+ "rand 0.10.4",
  "rustix",
  "rustix-linux-procfs",
  "thiserror 2.0.21",
