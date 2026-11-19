@@ -44,38 +44,41 @@ pub fn resolve_llm_config(model: Option<&str>, base_url: Option<&str>) -> AgentR
 }
 
 #[cfg(test)]
-mod test_env {
+mod env_fixture {
     use std::sync::{Mutex, MutexGuard};
 
-    pub(super) const LLM_ENV_VARS: &[&str] =
+    /// Every environment variable `resolve_llm_config` consults.
+    pub(super) const TOUCHED: &[&str] =
         &["LLM_API_KEY", "OPENAI_API_KEY", "LLM_MODEL", "OPENAI_MODEL", "LLM_BASE_URL", "OPENAI_BASE_URL"];
 
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
+    static SERIALIZED: Mutex<()> = Mutex::new(());
 
-    pub(super) fn lock() -> MutexGuard<'static, ()> {
-        ENV_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    /// Serialize tests that mutate process-global environment state.
+    pub(super) fn guard() -> MutexGuard<'static, ()> {
+        SERIALIZED.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    pub(super) struct EnvGuard {
-        keys: Vec<&'static str>,
-        saved: Vec<Option<String>>,
+    /// Snapshot the listed variables, clear them, restore on drop.
+    pub(super) struct Cleared {
+        vars: Vec<&'static str>,
+        prior: Vec<Option<String>>,
     }
 
-    impl EnvGuard {
-        pub(super) fn new(keys: &[&'static str]) -> Self {
-            let saved: Vec<Option<String>> = keys.iter().map(|k| std::env::var(k).ok()).collect();
-            for k in keys {
+    impl Cleared {
+        pub(super) fn take(vars: &[&'static str]) -> Self {
+            let prior = vars.iter().map(|k| std::env::var(k).ok()).collect();
+            for k in vars {
                 unsafe { std::env::remove_var(k) };
             }
-            Self { keys: keys.to_vec(), saved }
+            Self { vars: vars.to_vec(), prior }
         }
     }
 
-    impl Drop for EnvGuard {
+    impl Drop for Cleared {
         fn drop(&mut self) {
-            for (i, k) in self.keys.iter().enumerate() {
+            for (i, k) in self.vars.iter().enumerate() {
                 unsafe { std::env::remove_var(k) };
-                if let Some(ref v) = self.saved[i] {
+                if let Some(v) = &self.prior[i] {
                     unsafe { std::env::set_var(k, v) };
                 }
             }
@@ -85,10 +88,10 @@ mod test_env {
 
 #[cfg(test)]
 mod tests {
-    use super::test_env::{EnvGuard, LLM_ENV_VARS, lock};
+    use super::env_fixture::{Cleared, TOUCHED, guard};
     use super::*;
 
-    fn set_env(key: &str, value: &str) {
+    fn put(key: &str, value: &str) {
         unsafe { std::env::set_var(key, value) };
     }
 
@@ -106,11 +109,11 @@ mod tests {
     }
 
     #[test]
-    fn cli_model_wins_over_environment() {
-        let _lock = lock();
-        let _guard = EnvGuard::new(LLM_ENV_VARS);
-        set_env("LLM_API_KEY", "test-key");
-        set_env("LLM_MODEL", "env-model");
+    fn explicit_model_argument_beats_all_env_sources() {
+        let _lock = guard();
+        let _wipe = Cleared::take(TOUCHED);
+        put("LLM_API_KEY", "test-key");
+        put("LLM_MODEL", "env-model");
 
         let config = resolve_llm_config(Some("cli-model"), None).expect("config should resolve");
 
@@ -118,14 +121,14 @@ mod tests {
     }
 
     #[test]
-    fn llm_model_and_base_url_win_over_openai_values() {
-        let _lock = lock();
-        let _guard = EnvGuard::new(LLM_ENV_VARS);
-        set_env("LLM_API_KEY", "test-key");
-        set_env("LLM_MODEL", "llm-model");
-        set_env("OPENAI_MODEL", "openai-model");
-        set_env("LLM_BASE_URL", "https://llm.example.com/v1");
-        set_env("OPENAI_BASE_URL", "https://openai.example.com/v1");
+    fn llm_prefixed_env_wins_over_openai_prefixed_env() {
+        let _lock = guard();
+        let _wipe = Cleared::take(TOUCHED);
+        put("LLM_API_KEY", "test-key");
+        put("LLM_MODEL", "llm-model");
+        put("OPENAI_MODEL", "openai-model");
+        put("LLM_BASE_URL", "https://llm.example.com/v1");
+        put("OPENAI_BASE_URL", "https://openai.example.com/v1");
 
         let config = resolve_llm_config(None, None).expect("config should resolve");
 
@@ -134,11 +137,11 @@ mod tests {
     }
 
     #[test]
-    fn llm_api_key_wins_over_openai_api_key() {
-        let _lock = lock();
-        let _guard = EnvGuard::new(LLM_ENV_VARS);
-        set_env("LLM_API_KEY", "llm-key");
-        set_env("OPENAI_API_KEY", "openai-key");
+    fn api_key_prefers_llm_namespace_over_openai_namespace() {
+        let _lock = guard();
+        let _wipe = Cleared::take(TOUCHED);
+        put("LLM_API_KEY", "llm-key");
+        put("OPENAI_API_KEY", "openai-key");
 
         let config = resolve_llm_config(None, None).expect("config should resolve");
 
@@ -146,11 +149,11 @@ mod tests {
     }
 
     #[test]
-    fn openai_model_wins_over_default() {
-        let _lock = lock();
-        let _guard = EnvGuard::new(LLM_ENV_VARS);
-        set_env("LLM_API_KEY", "test-key");
-        set_env("OPENAI_MODEL", "openai-model");
+    fn openai_model_env_fills_in_when_llm_model_absent() {
+        let _lock = guard();
+        let _wipe = Cleared::take(TOUCHED);
+        put("LLM_API_KEY", "test-key");
+        put("OPENAI_MODEL", "openai-model");
 
         let config = resolve_llm_config(None, None).expect("config should resolve");
 
@@ -158,10 +161,10 @@ mod tests {
     }
 
     #[test]
-    fn model_and_base_url_use_defaults() {
-        let _lock = lock();
-        let _guard = EnvGuard::new(LLM_ENV_VARS);
-        set_env("LLM_API_KEY", "test-key");
+    fn built_in_defaults_apply_when_no_model_or_url_set() {
+        let _lock = guard();
+        let _wipe = Cleared::take(TOUCHED);
+        put("LLM_API_KEY", "test-key");
 
         let config = resolve_llm_config(None, None).expect("config should resolve");
 
@@ -170,9 +173,9 @@ mod tests {
     }
 
     #[test]
-    fn missing_api_key_returns_actionable_error() {
-        let _lock = lock();
-        let _guard = EnvGuard::new(LLM_ENV_VARS);
+    fn absent_api_key_names_the_variable_in_the_error() {
+        let _lock = guard();
+        let _wipe = Cleared::take(TOUCHED);
 
         let error = resolve_llm_config(None, None).expect_err("missing API key should fail");
 
@@ -182,7 +185,7 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::test_env::{EnvGuard, LLM_ENV_VARS, lock};
+    use super::env_fixture::{Cleared, TOUCHED, guard};
     use super::*;
 
     proptest::proptest! {
@@ -191,8 +194,8 @@ mod proptests {
             model in proptest::option::of("[a-zA-Z0-9_.-]{0,50}"),
             base_url in proptest::option::of("https://[a-z]{1,20}\\.example\\.com/v[0-9]"),
         ) {
-            let _lock = lock();
-            let _guard = EnvGuard::new(LLM_ENV_VARS);
+            let _lock = guard();
+            let _wipe = Cleared::take(TOUCHED);
             unsafe { std::env::set_var("LLM_API_KEY", "sk-proptest"); }
             let _ = resolve_llm_config(model.as_deref(), base_url.as_deref());
         }

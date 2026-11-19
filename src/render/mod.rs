@@ -169,41 +169,26 @@ mod tests {
     }
 
     #[test]
-    fn test_null_renderer_consumes_events_silently() {
+    fn null_renderer_swallows_a_representative_event_spread() {
         let mut r = NullRenderer;
         let sid = session_id();
 
-        // Representative framework events should all succeed and produce no output.
-        assert!(
-            r.render(RuntimeEvent::TextDelta {
-                session_id: sid.clone(),
-                text: "hello".into(),
-                agent_id: None,
-                trace_id: None
-            })
-            .is_ok()
-        );
-        assert!(
-            r.render(RuntimeEvent::ThoughtDelta {
+        let events = [
+            RuntimeEvent::TextDelta { session_id: sid.clone(), text: "hello".into(), agent_id: None, trace_id: None },
+            RuntimeEvent::ThoughtDelta {
                 session_id: sid.clone(),
                 text: "thinking".into(),
                 agent_id: None,
-                trace_id: None
-            })
-            .is_ok()
-        );
-        assert!(
-            r.render(RuntimeEvent::ActionStarted {
+                trace_id: None,
+            },
+            RuntimeEvent::ActionStarted {
                 session_id: sid.clone(),
                 tool_name: "test_tool".into(),
                 args_json: "{}".into(),
                 agent_id: None,
-                trace_id: None
-            })
-            .is_ok()
-        );
-        assert!(
-            r.render(RuntimeEvent::ActionFinished {
+                trace_id: None,
+            },
+            RuntimeEvent::ActionFinished {
                 session_id: sid.clone(),
                 tool_name: "test_tool".into(),
                 summary: "done".into(),
@@ -211,33 +196,28 @@ mod tests {
                 trace_id: None,
                 denied: false,
                 details: None,
-            })
-            .is_ok()
-        );
-        assert!(
-            r.render(RuntimeEvent::UserEvent {
+            },
+            RuntimeEvent::UserEvent {
                 session_id: sid.clone(),
                 event: agent_base::UserEvent::Progress { text: "progress".into() },
                 agent_id: None,
-                trace_id: None
-            })
-            .is_ok()
-        );
-        assert!(
-            r.render(RuntimeEvent::PlanUpdated {
+                trace_id: None,
+            },
+            RuntimeEvent::PlanUpdated {
                 session_id: sid.clone(),
                 objective: "obj".into(),
                 explanation: None,
                 plan: vec![],
                 agent_id: None,
-                trace_id: None
-            })
-            .is_ok()
-        );
-        assert!(
-            r.render(RuntimeEvent::RunFinished { session_id: sid.clone(), agent_id: None, trace_id: None }).is_ok()
-        );
-        assert!(r.finish_turn().is_ok());
-        assert!(r.finish_session().is_ok());
+                trace_id: None,
+            },
+            RuntimeEvent::RunFinished { session_id: sid.clone(), agent_id: None, trace_id: None },
+        ];
+
+        for event in events {
+            r.render(event).expect("null renderer accepts every event kind");
+        }
+        r.finish_turn().expect("finish_turn is a no-op");
+        r.finish_session().expect("finish_session is a no-op");
     }
 }

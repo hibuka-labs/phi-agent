@@ -36,32 +36,26 @@ use futures_core::Stream;
 
 // ── Mock LLM client (same pattern as custom_policy.rs) ────────────────────
 
-struct QueueStream {
-    items: VecDeque<Result<StreamChunk, LlmError>>,
+struct ScriptedStream {
+    pending: VecDeque<Result<StreamChunk, LlmError>>,
 }
 
-impl Stream for QueueStream {
+impl Stream for ScriptedStream {
     type Item = Result<StreamChunk, LlmError>;
     fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Poll::Ready(self.items.pop_front())
+        Poll::Ready(self.pending.pop_front())
     }
 }
 
-struct MockLlmClient;
-
-impl MockLlmClient {
-    fn new() -> Self {
-        Self
-    }
-}
+struct ScriptedLlm;
 
 #[async_trait]
-impl LlmProvider for MockLlmClient {
+impl LlmProvider for ScriptedLlm {
     async fn stream(&self, _request: ChatRequest) -> Result<ChatStream, LlmError> {
-        let mut items = VecDeque::new();
-        items.push_back(Ok(StreamChunk::Text("Hello from mock!".into())));
-        items.push_back(Ok(StreamChunk::Stop { finish_reason: Some("stop".into()) }));
-        Ok(ChatStream::new(Box::pin(QueueStream { items })))
+        let mut pending = VecDeque::new();
+        pending.push_back(Ok(StreamChunk::Text("Hello from mock!".into())));
+        pending.push_back(Ok(StreamChunk::Stop { finish_reason: Some("stop".into()) }));
+        Ok(ChatStream::new(Box::pin(ScriptedStream { pending })))
     }
 
     async fn chat(&self, _request: ChatRequest) -> Result<ChatResponse, LlmError> {
@@ -145,7 +139,7 @@ async fn main() -> anyhow::Result<()> {
     println!("  Sensitive   → AllowOnce   (approve this once, re-prompt later)");
     println!("  Destructive → Deny        (always reject)\n");
 
-    let llm_client = Arc::new(MockLlmClient::new());
+    let llm_client = Arc::new(ScriptedLlm);
     let approval_handler = Arc::new(RiskBasedApprovalHandler::new());
 
     // Build the agent with the custom handler

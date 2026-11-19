@@ -244,16 +244,22 @@ mod proptests {
     }
 
     #[test]
-    fn format_number_renders_exact_boundaries() {
-        // Concrete boundary values pinned by the former metrics.rs tests: the
-        // rounding rule (999_999 -> "1000.0K") is intentional and locked in.
-        assert_eq!(format_number(0), "0");
-        assert_eq!(format_number(42), "42");
-        assert_eq!(format_number(999), "999");
-        assert_eq!(format_number(1_000), "1.0K");
-        assert_eq!(format_number(1_500), "1.5K");
-        assert_eq!(format_number(999_999), "1000.0K");
-        assert_eq!(format_number(1_000_000), "1.0M");
-        assert_eq!(format_number(2_500_000), "2.5M");
+    fn format_number_pinned_examples() {
+        // Spot-check the display contract at the values users actually see.
+        // The K bucket intentionally renders 999_999 as "1000.0K" (one
+        // decimal, rounded) — that rounding is part of the contract.
+        let cases: [(u64, &str); 8] = [
+            (0, "0"),
+            (42, "42"),
+            (999, "999"),
+            (1_000, "1.0K"),
+            (1_500, "1.5K"),
+            (999_999, "1000.0K"),
+            (1_000_000, "1.0M"),
+            (2_500_000, "2.5M"),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(format_number(input), expected, "input {input}");
+        }
     }
 }

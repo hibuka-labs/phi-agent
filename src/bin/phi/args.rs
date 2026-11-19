@@ -209,33 +209,23 @@ mod tests {
     use super::*;
     use clap::CommandFactory;
 
-    /// `ReasoningEffort` does not implement `PartialEq`, so the mapping is
-    /// asserted with exhaustive `matches!` checks instead.
-    fn assert_maps_to(arg: ReasoningEffortArg, expected: ReasoningEffort) {
-        let mapped = ReasoningEffort::from(arg);
-        assert!(
-            matches!(
-                (&mapped, &expected),
-                (ReasoningEffort::Low, ReasoningEffort::Low)
-                    | (ReasoningEffort::Medium, ReasoningEffort::Medium)
-                    | (ReasoningEffort::High, ReasoningEffort::High)
-                    | (ReasoningEffort::XHigh, ReasoningEffort::XHigh)
-            ),
-            "expected {expected:?}, got {mapped:?}"
-        );
+    /// `ReasoningEffort` has no `PartialEq`, so compare via `Debug` output.
+    fn assert_maps(arg: ReasoningEffortArg, expected: ReasoningEffort) {
+        let got = ReasoningEffort::from(arg);
+        assert_eq!(format!("{got:?}"), format!("{expected:?}"));
     }
 
     #[test]
-    fn reasoning_effort_arg_maps_to_reasoning_effort() {
-        assert_maps_to(ReasoningEffortArg::Low, ReasoningEffort::Low);
-        assert_maps_to(ReasoningEffortArg::Medium, ReasoningEffort::Medium);
-        assert_maps_to(ReasoningEffortArg::High, ReasoningEffort::High);
-        // The variant is spelled `Xhigh` on the arg side and `XHigh` on the domain side.
-        assert_maps_to(ReasoningEffortArg::Xhigh, ReasoningEffort::XHigh);
+    fn every_cli_effort_variant_reaches_the_matching_domain_variant() {
+        assert_maps(ReasoningEffortArg::Low, ReasoningEffort::Low);
+        assert_maps(ReasoningEffortArg::Medium, ReasoningEffort::Medium);
+        assert_maps(ReasoningEffortArg::High, ReasoningEffort::High);
+        // Spelled `Xhigh` on the CLI side, `XHigh` in the domain enum.
+        assert_maps(ReasoningEffortArg::Xhigh, ReasoningEffort::XHigh);
     }
 
     #[test]
-    fn thinking_effort_flag_round_trips_to_reasoning_effort() {
+    fn thinking_effort_flag_parses_each_supported_value() {
         for (flag, expected) in [
             ("low", ReasoningEffort::Low),
             ("medium", ReasoningEffort::Medium),
@@ -244,7 +234,7 @@ mod tests {
         ] {
             let args = CliArgs::try_parse_from(["phi", "--thinking-effort", flag])
                 .unwrap_or_else(|err| panic!("--thinking-effort {flag} should parse: {err}"));
-            assert_maps_to(args.thinking_effort, expected);
+            assert_maps(args.thinking_effort, expected);
         }
         assert!(CliArgs::command().get_arguments().any(|a| a.get_long() == Some("thinking-effort")));
     }
