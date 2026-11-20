@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-20
+
+### Added
+- **A discarded corrupt round is filed on disk.** When the engine discards a
+  corrupt tool-call batch, the raw response is kept verbatim at
+  `<session>/integrity/turn-NNN-rR.json` — arguments still broken, which is
+  the evidence — plus the structural facts and the text the round carried.
+  The turn log points at it. The renderers stay silent on purpose:
+  absorbing a corrupt round is not the user's business, but the next time a
+  session shows a truncated call the evidence is a file, not a log line.
+
+### Changed
+- **Breaking (dependency):** `agent-base` requirement bumped from 0.15.0 to
+  0.16.0, `agent-works` from 0.15.0 to 0.16.0, `phi-kernel-tools` from
+  0.15.0 to 0.16.0, `phi-tools` from 0.10.0 to 0.11.0 and `phi-telemetry`
+  from 0.9.0 to 0.10.0 — the whole family moves to one version of each
+  crate in a single chain.
+
+### License
+- **Dual-licensed as MIT OR Apache-2.0.**
+
 ## [0.23.0] - 2026-11-16
 
 ### Added
