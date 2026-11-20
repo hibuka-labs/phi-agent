@@ -285,6 +285,10 @@ impl EventRenderer for TerminalRenderer {
                 }
             },
             RuntimeEvent::UserEvent { .. } => {},
+            // A discarded corrupt round is absorbed silently — the
+            // user sees nothing (the evidence lives in the session's
+            // integrity/ directory and the metrics).
+            RuntimeEvent::IntegrityDiscard { .. } => {},
             RuntimeEvent::Checkpoint { .. } => {},
         }
 

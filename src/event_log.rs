@@ -36,12 +36,53 @@ pub fn save_turn_log(
     for event in events {
         let line = event_to_jsonl(event);
         writeln!(file, "{}", line)?;
+        // A discarded (corrupt) round is filed whole under the session's
+        // `integrity/` directory — the raw evidence lives on disk, not just
+        // as a log line that says "something was truncated".
+        if matches!(event, RuntimeEvent::IntegrityDiscard { .. }) {
+            write_integrity_artifact(session_ctx, event)?;
+        }
     }
 
     writeln!(file, "{}", serde_json::to_string(&serde_json::json!({"type": "turn_end", "turn": turn}))?)?;
 
     file.flush()?;
 
+    Ok(())
+}
+
+/// Write one discarded (corrupt) response into `<session>/integrity/`.
+///
+/// The full copy is the point: when a session shows a truncated tool call,
+/// the evidence (raw arguments, structural facts, the text the round
+/// carried) is on disk instead of being reconstructed from a log line.
+fn write_integrity_artifact(session_ctx: &SessionContext, event: &RuntimeEvent) -> AgentResult<()> {
+    let RuntimeEvent::IntegrityDiscard {
+        turn,
+        retries_in_round,
+        invalid_args,
+        orphan_args_bytes,
+        tool_calls,
+        text,
+        ..
+    } = event
+    else {
+        return Ok(());
+    };
+    let dir = session_ctx.session_dir.join("integrity");
+    std::fs::create_dir_all(&dir)?;
+    // One file per discard: the round counter makes it unique (a turn may
+    // discard more than once when the retry comes back damaged too).
+    let path = dir.join(format!("turn-{turn:03}-r{retries_in_round}.json"));
+    let body = serde_json::json!({
+        "turn": turn,
+        "retries_in_round": retries_in_round,
+        "invalid_args": invalid_args,
+        "orphan_args_bytes": orphan_args_bytes,
+        "tool_calls": tool_calls,
+        "text": text,
+    });
+    std::fs::write(&path, serde_json::to_string_pretty(&body)?)?;
     Ok(())
 }
 
@@ -76,6 +117,27 @@ pub fn event_to_value(event: &RuntimeEvent) -> serde_json::Value {
             serde_json::json!({"type": "user_event", "event_type": event_type, "data": data})
         },
         RuntimeEvent::UserEvent { .. } => serde_json::json!({"type": "other"}),
+        RuntimeEvent::IntegrityDiscard {
+            turn,
+            retries_in_round,
+            invalid_args,
+            orphan_args_bytes,
+            tool_calls,
+            text,
+            ..
+        } => {
+            // The discarded response, kept whole — the evidence for "the
+            // provider cut this call's arguments off".
+            serde_json::json!({
+                "type": "integrity_discard",
+                "turn": turn,
+                "retries_in_round": retries_in_round,
+                "invalid_args": invalid_args,
+                "orphan_args_bytes": orphan_args_bytes,
+                "tool_calls": tool_calls,
+                "text": text,
+            })
+        },
         RuntimeEvent::RunCancelled { .. } => serde_json::json!({"type": "run_cancelled"}),
         RuntimeEvent::RunFinished { .. } => serde_json::json!({"type": "run_finished"}),
         RuntimeEvent::Checkpoint { .. } => serde_json::json!({"type": "checkpoint"}),
@@ -247,6 +309,38 @@ mod tests {
 
     fn make_session_ctx(tmp: &TempDir) -> SessionContext {
         crate::session::resolve_session(Some("test-session"), tmp.path()).unwrap()
+    }
+
+    /// A discarded (corrupt) round is kept whole: the session's `integrity/`
+    /// directory holds the raw response, and the turn log points at it.
+    #[test]
+    fn integrity_discard_is_filed_and_referenced() {
+        let tmp = TempDir::new().unwrap();
+        let ctx = make_session_ctx(&tmp);
+        let events = vec![RuntimeEvent::IntegrityDiscard {
+            session_id: session_id(),
+            turn: 3,
+            retries_in_round: 0,
+            invalid_args: 1,
+            orphan_args_bytes: 17,
+            tool_calls: vec![serde_json::json!({
+                "function": { "name": "execute_command", "arguments": "{\"command\":\"pwd\"" }
+            })],
+            text: String::new(),
+        }];
+        save_turn_log(&ctx, 3, &events, "do it").unwrap();
+
+        let integrity_dir = ctx.session_dir.join("integrity");
+        let files: Vec<_> = std::fs::read_dir(&integrity_dir).unwrap().flatten().collect();
+        assert_eq!(files.len(), 1, "one artifact per discard");
+        let body: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(files[0].path()).unwrap()).unwrap();
+        assert_eq!(body["turn"], 3);
+        assert_eq!(body["invalid_args"], 1);
+        assert_eq!(body["orphan_args_bytes"], 17);
+        assert_eq!(body["tool_calls"][0]["function"]["arguments"], "{\"command\":\"pwd\"");
+
+        let log = std::fs::read_to_string(ctx.turn_path(3)).unwrap();
+        assert!(log.contains("integrity_discard"), "{log}");
     }
 
     #[test]
