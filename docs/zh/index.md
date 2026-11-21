@@ -111,13 +111,24 @@ agent-base 是运行时内核，agent-works 扩展协议与技能，phi-kernel-t
 
 ```toml
 # 轻量：只要文件工具 + MCP
-phi-agent = { version = "0.19", default-features = false, features = ["file", "mcp"] }
+phi-agent = { version = "0.24", default-features = false, features = ["file", "mcp"] }
 
 # 全量：全部功能
-phi-agent = { version = "0.19", features = ["full"] }
+phi-agent = { version = "0.24", features = ["full"] }
 ```
 
 → [完整 feature 列表](guide/concepts/architecture.md#按需引入)
+
+## 支持平台
+
+| 平台 | 下限 | 说明 |
+|---|---|---|
+| Linux | glibc 2.28 | Ubuntu 20.04+、Debian 11+、Rocky/Alma 8+、Fedora 33+ |
+| Windows | Windows 10 1809+ | 家目录是 `USERPROFILE`，框架会自己解析 |
+| macOS | 12+ | Apple Silicon 与 Intel |
+
+CI 在三个平台上构建并跑测试。家目录统一走 `dirs::home_dir()`——Unix 读 `HOME`，
+Windows 读 `USERPROFILE`；手写环境变量查找会被 CI 的 `platform-gate` 直接拦下。
 
 ## 链接
 

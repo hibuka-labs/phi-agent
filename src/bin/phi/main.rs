@@ -50,7 +50,11 @@ async fn main() -> Result<()> {
     }
 
     // 1. Resolve log directory
-    let log_dir = args.log_dir.replace("~", &std::env::var("HOME").unwrap_or_default());
+    let log_dir = match dirs::home_dir() {
+        Some(home) => args.log_dir.replace("~", &home.to_string_lossy()),
+        // No home: leave the '~' literal rather than expand it to "".
+        None => args.log_dir.clone(),
+    };
     let log_dir_path = std::path::PathBuf::from(&log_dir);
 
     // 2. Clean up expired sessions

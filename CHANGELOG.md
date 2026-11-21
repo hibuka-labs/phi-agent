@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-22
+
+### Fixed
+- **The home directory is resolved the same way on every platform.** The
+  CLI resolved `HOME` first and `USERPROFILE` second, and fell back to the
+  current directory when neither was set — on Windows, where only
+  `USERPROFILE` exists, and on any system with no home at all. The skill
+  directory, the REPL history file, the serve debug log and the `~` in
+  `--log-dir` now resolve through `dirs::home_dir()`. When no home can be
+  found the fallback is the system temp directory (absolute, and it says
+  so), never the current directory.
+
+### Changed
+- **Tests run on every release platform.** CI builds and runs the test
+  suite on Linux, macOS and Windows instead of Linux alone — platform-only
+  breaks used to reach users because nothing upstream caught them. A new
+  `platform-gate` job rejects hand-rolled `HOME` / `USERPROFILE`
+  environment lookups at any call site, so the Windows path cannot be
+  missed again.
+
 ## [0.24.0] - 2026-11-20
 
 ### Added

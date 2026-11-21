@@ -117,8 +117,11 @@ pub async fn run_repl(
     let mut turn_number: u32 = session_ctx.last_turn_number();
 
     let mut rl = rustyline::Editor::<(), rustyline::history::FileHistory>::new()?;
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    let history_path = std::path::PathBuf::from(home).join(".phi-agent").join("history");
+    let home = dirs::home_dir().unwrap_or_else(|| {
+        tracing::warn!("HOME/USERPROFILE is not set; history falls back to temp dir");
+        std::env::temp_dir()
+    });
+    let history_path = home.join(".phi-agent").join("history");
     let _ = rl.load_history(&history_path);
     let prompt = format!("\n{}Phi > {}", "\x1b[1m", "\x1b[0m");
 

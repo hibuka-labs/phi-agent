@@ -111,13 +111,26 @@ Different businesses, different needs — just the runtime? `cargo add agent-bas
 
 ```toml
 # Lightweight: file tools + MCP only
-phi-agent = { version = "0.19", default-features = false, features = ["file", "mcp"] }
+phi-agent = { version = "0.24", default-features = false, features = ["file", "mcp"] }
 
 # Full: everything
-phi-agent = { version = "0.19", features = ["full"] }
+phi-agent = { version = "0.24", features = ["full"] }
 ```
 
 → [Full feature list](guide/concepts/architecture/#pick-what-you-need)
+
+## Supported platforms
+
+| Platform | Minimum | Notes |
+|---|---|---|
+| Linux | glibc 2.28 | Ubuntu 20.04+, Debian 11+, Rocky/Alma 8+, Fedora 33+ |
+| Windows | Windows 10 1809+ | `USERPROFILE` is the home; the framework resolves it for you |
+| macOS | 12+ | Apple Silicon and Intel |
+
+CI builds and runs the test suite on all three platforms. The home directory
+is resolved through `dirs::home_dir()`, which reads `HOME` on Unix and
+`USERPROFILE` on Windows — a raw environment lookup is rejected by the
+`platform-gate` CI job.
 
 ## Links
 

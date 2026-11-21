@@ -144,3 +144,53 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
+
+  # -- Test on every release platform --
+  # The OS matrix is the platform compile+run check: platform-only breaks
+  # used to reach users because CI ran Linux alone (family incidents:
+  # USERPROFILE audit bug 2026-11-22; phimint 0.7.0 windows build).
+  test-platforms:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Checkout dependencies
+        run: |
+          cd ..
+          for repo in agent-base agent-works phi-tools log-core; do
+            git clone --depth 1 "https://github.com/$DEPS_ORG/$repo.git"
+          done
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            ../agent-base
+            ../agent-works
+            ../phi-tools
+            ../log-core
+
+      - name: Test
+        run: cargo test --verbose
+
+  platform-gate:
+    name: platform primitive gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: no hand-rolled HOME/USERPROFILE lookups
+        run: |
+          if grep -rnE --include='*.rs' --exclude-dir=target --exclude-dir=.git 'env::var(_os)?\("(HOME|USERPROFILE)"\)' .; then
+            echo "Banned: use the repo home-dir helper (dirs::home_dir() or the local throat) instead of raw HOME/USERPROFILE env lookups."
+            exit 1
+          fi

@@ -21,15 +21,18 @@ macro_rules! dbg_log {
     ($($arg:tt)*) => {{
         use std::io::Write;
         let _ = std::fs::OpenOptions::new().create(true).append(true).open(
-            std::env::var("HOME").map(|h| format!("{}/.phi-agent/serve-debug.log", h))
-                .unwrap_or_else(|_| "serve-debug.log".to_string())
+            dirs::home_dir().map(|h| h.join(".phi-agent").join("serve-debug.log"))
+                .unwrap_or_else(|| std::path::PathBuf::from("serve-debug.log"))
         ).map(|mut f| { let _ = writeln!(f, "[{}] {}", std::process::id(), format!($($arg)*)); });
     }};
 }
 
 pub async fn run() -> anyhow::Result<()> {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    std::fs::create_dir_all(std::path::PathBuf::from(&home).join(".phi-agent"))?;
+    let home = dirs::home_dir().unwrap_or_else(|| {
+        tracing::warn!("HOME/USERPROFILE is not set; serve dir falls back to temp dir");
+        std::env::temp_dir()
+    });
+    std::fs::create_dir_all(home.join(".phi-agent"))?;
 
     // LLM config is resolved once at server startup from environment.
     // Per-run config (model/api_key/base_url) sent by the SDK in the

@@ -330,10 +330,10 @@ fn base_agent_builder_with_file_options_inner(
 /// Resolve the user's home directory for `~/.claude/skills/`.
 #[cfg(feature = "skill")]
 fn dirs_next() -> std::path::PathBuf {
-    std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("."))
+    dirs::home_dir().unwrap_or_else(|| {
+        tracing::warn!("HOME/USERPROFILE is not set; using temp dir as home fallback");
+        std::env::temp_dir()
+    })
 }
 
 #[cfg(test)]
