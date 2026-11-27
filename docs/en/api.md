@@ -98,6 +98,7 @@ a pick is pending.
 | `mcp` | `McpServer`, MCP types (from `agent-works`) |
 | `multi-agent` | `ChildResultRoute`, `ChildResultRouter`, `AgentSnapshot`, `RegistrySnapshot` |
 | `compression` | `CompressionMiddleware`, `clear_compression_cache`, `run_compact_session` |
+| `memory` | `MemoryConfig` (from `agent-works`) — storage root, index filename, prompt template, and the write-path limits |
 | `telemetry` | Metrics types (from `phi-telemetry`) |
 | `browser` | 21 CDP browser automation tools (from `phi-tools`) |
 

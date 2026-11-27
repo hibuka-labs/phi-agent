@@ -59,9 +59,9 @@ dependencies = [
 
 [[package]]
 name = "agent-works"
-version = "0.16.1"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e08c8eda6774a50770071d6d7a69fce21aefa06efdd170c976a4963f5e6703ce"
+checksum = "3910f7d32d2ef5eb73ce2f2491464f592c2e55214dc84d0397e33adf2393082b"
 dependencies = [
  "agent-base",
  "async-trait",
@@ -2482,7 +2482,7 @@ dependencies = [
 
 [[package]]
 name = "phi-agent"
-version = "0.24.1"
+version = "0.25.0"
 dependencies = [
  "agent-base",
  "agent-works",
@@ -2528,9 +2528,9 @@ dependencies = [
 
 [[package]]
 name = "phi-kernel-tools"
-version = "0.16.1"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "456860cff56a4528a98f3ff0441d6de34f8c876b4477b0f2506aca3338769de5"
+checksum = "d6ce39786a6f6771d680da45562dc53ddb1086ae0278897220673c5b01440ac0"
 dependencies = [
  "agent-base",
  "agent-works",

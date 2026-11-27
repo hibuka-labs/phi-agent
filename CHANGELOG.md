@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-27
+
+### Added
+- **`MemoryConfig` carries the write-path limits.** The `memory` feature's
+  re-exported `MemoryConfig` gains the `limits` field from `agent-works`
+  0.17.0: a product can cap the entry hook, the entry body, the stored
+  entries, the stored bytes and the index bytes, and a write that blows a
+  cap is refused with a five-field contract (rule, limit, actual, fix,
+  candidate) instead of failing later. The defaults are unchanged — a
+  config that never names `limits` behaves exactly as before.
+
+### Changed
+- **`agent-works` requirement bumped from 0.16.1 to 0.17.0** — one version of
+  each family crate in the graph.
+
 ## [0.24.1] - 2026-11-22
 
 ### Fixed

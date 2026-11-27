@@ -96,6 +96,7 @@ phi-agent 重导出了 [`agent-works`](https://docs.rs/agent-works) 的关键类
 | `mcp` | `McpServer`、MCP 类型（来自 `agent-works`） |
 | `multi-agent` | `ChildResultRoute`、`ChildResultRouter`、`AgentSnapshot`、`RegistrySnapshot` |
 | `compression` | `CompressionMiddleware`、`clear_compression_cache`、`run_compact_session` |
+| `memory` | `MemoryConfig`（来自 `agent-works`）—— 存储根目录、索引文件名、提示词模板与写路径限额 |
 | `telemetry` | 指标类型（来自 `phi-telemetry`） |
 | `browser` | 21 个 CDP 浏览器自动化工具（来自 `phi-tools`） |
 
